@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>PestiSynth – Pest Pesticide Affinity Demo</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 0 12px;
+    }
+    h1 {
+      margin-bottom: 0.3rem;
+    }
+    .section {
+      border: 1px solid #ddd;
+      padding: 12px;
+      margin-bottom: 16px;
+      border-radius: 6px;
+    }
+    label {
+      display: block;
+      margin: 4px 0 2px;
+      font-weight: 600;
+    }
+    select, input, button, textarea {
+      padding: 6px;
+      margin-bottom: 8px;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    button {
+      cursor: pointer;
+    }
+    .molecule-list {
+      margin-top: 8px;
+    }
+    .molecule-item {
+      padding: 6px;
+      border-bottom: 1px solid #eee;
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .molecule-item span {
+      overflow-wrap: anywhere;
+    }
+    .pill {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: white;
+    }
+    .pill-high { background: #1a9c3b; }
+    .pill-medium { background: #d98c00; }
+    .pill-low { background: #d3384b; }
+    .results-item {
+      border-bottom: 1px solid #eee;
+      padding: 8px 0;
+    }
+    .results-item h4 {
+      margin: 0 0 4px;
+    }
+    pre {
+      background: #f6f6f6;
+      padding: 8px;
+      overflow-x: auto;
+      font-size: 0.8rem;
+    }
+    .error {
+      color: #d3384b;
+      font-weight: 600;
+      margin-top: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>PestiSynth</h1>
+  <p style="margin-top: 0;">
+    Predict binding affinity between pest proteins and pesticide molecules using PLAPT.
+  </p>
+
+  <div class="section">
+    <h2>1. Choose pest</h2>
+    <label for="pest-select">Pest</label>
+    <select id="pest-select"></select>
+  </div>
+
+  <div class="section">
+    <h2>2. Add molecules (up to 5)</h2>
+
+    <label for="pesticide-select">Known pesticide (from library)</label>
+    <select id="pesticide-select">
+      <option value="">-- None --</option>
+    </select>
+
+    <label for="custom-name">Custom molecule name (optional)</label>
+    <input id="custom-name" type="text" placeholder="e.g. Custom ethanol test" />
+
+    <label for="custom-smiles">Custom SMILES (optional)</label>
+    <input id="custom-smiles" type="text" placeholder="e.g. CCO" />
+
+    <button id="add-molecule-btn">Add molecule</button>
+    <div id="add-error" class="error" style="display:none;"></div>
+
+    <div class="molecule-list" id="molecule-list"></div>
+  </div>
+
+  <div class="section">
+    <h2>3. Run prediction</h2>
+    <button id="run-btn">Score molecules</button>
+    <div id="run-error" class="error" style="display:none;"></div>
+  </div>
+
+  <div class="section">
+    <h2>Results</h2>
+    <div id="results"></div>
+  </div>
+
+  <script>
+    const API_BASE = "http://localhost:8000";
+
+    const pestSelect = document.getElementById("pest-select");
+    const pesticideSelect = document.getElementById("pesticide-select");
+    const customNameInput = document.getElementById("custom-name");
+    const customSmilesInput = document.getElementById("custom-smiles");
+    const addMoleculeBtn = document.getElementById("add-molecule-btn");
+    const moleculeListDiv = document.getElementById("molecule-list");
+    const addErrorDiv = document.getElementById("add-error");
+    const runBtn = document.getElementById("run-btn");
+    const runErrorDiv = document.getElementById("run-error");
+    const resultsDiv = document.getElementById("results");
+
+    let pests = [];
+    let pesticides = [];
+    let molecules = []; // local pending molecules
+
+    function showAddError(msg) {
+      addErrorDiv.textContent = msg;
+      addErrorDiv.style.display = "block";
+    }
+
+    function clearAddError() {
+      addErrorDiv.textContent = "";
+      addErrorDiv.style.display = "none";
+    }
+
+    function showRunError(msg) {
+      runErrorDiv.textContent = msg;
+      runErrorDiv.style.display = "block";
+    }
+
+    function clearRunError() {
+      runErrorDiv.textContent = "";
+      runErrorDiv.style.display = "none";
+    }
+
+    function renderMoleculeList() {
+      moleculeListDiv.innerHTML = "";
+      if (molecules.length === 0) {
+        moleculeListDiv.textContent = "No molecules added yet.";
+        return;
+      }
+
+      molecules.forEach((mol, idx) => {
+        const div = document.createElement("div");
+        div.className = "molecule-item";
+
+        const left = document.createElement("span");
+        left.textContent = mol.name + (mol.pesticide_id ? " (library)" : " (custom)");
+
+        const right = document.createElement("span");
+        if (mol.smiles) {
+          right.textContent = mol.smiles;
+        }
+
+        const removeBtn = document.createElement("button");
+        removeBtn.textContent = "Remove";
+        removeBtn.style.width = "auto";
+        removeBtn.onclick = () => {
+          molecules.splice(idx, 1);
+          renderMoleculeList();
+        };
+
+        div.appendChild(left);
+        div.appendChild(right);
+        div.appendChild(removeBtn);
+        moleculeListDiv.appendChild(div);
+      });
+    }
+
+    async function fetchPests() {
+      const resp = await fetch(API_BASE + "/pests");
+      if (!resp.ok) throw new Error("Failed to fetch pests");
+      pests = await resp.json();
+      pestSelect.innerHTML = "";
+      pests.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.name;
+        pestSelect.appendChild(opt);
+      });
+    }
+
+    async function fetchPesticides() {
+      const resp = await fetch(API_BASE + "/pesticides");
+      if (!resp.ok) throw new Error("Failed to fetch pesticides");
+      pesticides = await resp.json();
+
+      // reset options
+      pesticideSelect.innerHTML = "";
+      const noneOpt = document.createElement("option");
+      noneOpt.value = "";
+      noneOpt.textContent = "-- None --";
+      pesticideSelect.appendChild(noneOpt);
+
+      pesticides.forEach(p => {
+        const opt = document.createElement("option");
+        opt.value = p.id;
+        opt.textContent = p.name;
+        pesticideSelect.appendChild(opt);
+      });
+    }
+
+    addMoleculeBtn.addEventListener("click", () => {
+      clearAddError();
+
+      if (molecules.length >= 5) {
+        showAddError("You can add at most 5 molecules.");
+        return;
+      }
+
+      const selectedPesticideId = pesticideSelect.value || null;
+      const customName = customNameInput.value.trim();
+      const customSmiles = customSmilesInput.value.trim();
+
+      if (!selectedPesticideId && !customSmiles) {
+        showAddError("Choose a pesticide from the list or enter a custom SMILES.");
+        return;
+      }
+
+      let name = customName || null;
+      if (!name && selectedPesticideId) {
+        const p = pesticides.find(pp => pp.id === selectedPesticideId);
+        if (p) name = p.name;
+      }
+      if (!name) name = "Unnamed molecule";
+
+      const molPayload = {
+        name,
+        pesticide_id: selectedPesticideId,
+        smiles: customSmiles || null
+      };
+
+      molecules.push(molPayload);
+      renderMoleculeList();
+
+      // clear custom inputs but keep pesticide dropdown
+      customNameInput.value = "";
+      customSmilesInput.value = "";
+    });
+
+    runBtn.addEventListener("click", async () => {
+      clearRunError();
+      resultsDiv.innerHTML = "";
+
+      if (molecules.length === 0) {
+        showRunError("Add at least one molecule first.");
+        return;
+      }
+
+      const pestId = pestSelect.value;
+      if (!pestId) {
+        showRunError("Select a pest first.");
+        return;
+      }
+
+      const payload = {
+        pest_id: pestId,
+        molecules: molecules
+      };
+
+      try {
+        const resp = await fetch(API_BASE + "/score/batch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          const text = await resp.text();
+          showRunError("Backend error: " + text);
+          return;
+        }
+
+        const data = await resp.json();
+        renderResults(data);
+      } catch (err) {
+        console.error(err);
+        showRunError("Failed to call API: " + err.message);
+      }
+    });
+
+    function labelClass(label) {
+      const s = String(label || "").toLowerCase();
+      if (s === "high") return "pill pill-high";
+      if (s === "medium") return "pill pill-medium";
+      return "pill pill-low";
+    }
+
+    function renderResults(resp) {
+      resultsDiv.innerHTML = "";
+
+      if (!resp || !resp.results || resp.results.length === 0) {
+        resultsDiv.textContent = "No results.";
+        return;
+      }
+
+      const pestHeader = document.createElement("p");
+      pestHeader.innerHTML = "<strong>Pest:</strong> " + resp.pest;
+      resultsDiv.appendChild(pestHeader);
+
+      resp.results.forEach(r => {
+        const div = document.createElement("div");
+        div.className = "results-item";
+
+        const title = document.createElement("h4");
+        title.textContent = r.name;
+
+        const labelSpan = document.createElement("span");
+        labelSpan.className = labelClass(r.label);
+        labelSpan.textContent = r.label;
+
+        const smilesP = document.createElement("p");
+        smilesP.innerHTML = "<strong>SMILES:</strong> " + r.smiles;
+
+        const scoreP = document.createElement("p");
+        scoreP.innerHTML = "<strong>Predicted affinity:</strong> " +
+          (typeof r.score === "number" ? r.score.toFixed(3) : r.score) +
+          " µM";
+
+        const interpP = document.createElement("p");
+        interpP.textContent = r.interpretation || "";
+
+        title.appendChild(document.createTextNode(" "));
+        title.appendChild(labelSpan);
+
+        div.appendChild(title);
+        div.appendChild(smilesP);
+        div.appendChild(scoreP);
+        div.appendChild(interpP);
+
+        resultsDiv.appendChild(div);
+      });
+    }
+
+    // init
+    (async () => {
+      try {
+        await fetchPests();
+        await fetchPesticides();
+        renderMoleculeList();
+      } catch (err) {
+        console.error(err);
+        showRunError("Failed to load initial data: " + err.message);
+      }
+    })();
+  </script>
+</body>
+</html>
