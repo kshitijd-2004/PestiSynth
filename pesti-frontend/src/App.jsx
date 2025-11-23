@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import imgFallArmyworm from "./assets/pest_img/Fall_Armyworm.png";
 import imgAphids from "./assets/pest_img/Aphids.png";
-import imgColoradoPotatoBeetle from "./assets/pest_img/Colorado_Potato_Beetle.png";
+import imgColoradoPotatoBeetle from "./assets/pest_img/Colorado_potato_Beetle.png";
 import imgBrownPlanthopper from "./assets/pest_img/Brown_Planthopper.png";
 import imgMosquitoLarvae from "./assets/pest_img/Mosquito_Larvae.png";
 import imgCottonBollworm from "./assets/pest_img/Cotton_Ballworm.png";
@@ -474,7 +474,7 @@ function App() {
             {/* Custom SMILES input */}
             <section className="section">
               <div className="section-header">
-                <h2>3. Add Custom SMILES (optional)</h2>
+                <h2>3. Add Custom SMILES</h2>
                 <p>
                   Include novel molecules by typing a SMILES string or importing
                   a comma-separated list from a .txt file.
