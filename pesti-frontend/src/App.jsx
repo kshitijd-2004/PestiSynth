@@ -5,6 +5,9 @@ import imgAphids from "./assets/pest_img/Aphids.png";
 import imgColoradoPotatoBeetle from "./assets/pest_img/Colorado_Potato_Beetle.png";
 import imgBrownPlanthopper from "./assets/pest_img/Brown_Planthopper.png";
 import imgMosquitoLarvae from "./assets/pest_img/Mosquito_Larvae.png";
+import imgCottonBollworm from "./assets/pest_img/Cotton_Ballworm.png";
+import imgDiamondbackMoth from "./assets/pest_img/Diamondback_Moth.png";
+import imgRiceStemBorer from "./assets/pest_img/RiceStem_Borer.png";
 
 
 import imgAcetamiprid from "./assets/pesticide_img/Acetamiprid.png";
@@ -35,6 +38,9 @@ const PEST_IMAGE_MAP = {
   colorado_potato_beetle: imgColoradoPotatoBeetle,
   brown_planthopper: imgBrownPlanthopper,
   mosquito_larvae: imgMosquitoLarvae,
+  cotton_bollworm: imgCottonBollworm,
+  diamondback_moth: imgDiamondbackMoth,
+  rice_stem_borer: imgRiceStemBorer,
 };
 
 const PESTICIDE_IMAGE_MAP = {
