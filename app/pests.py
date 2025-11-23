@@ -173,3 +173,11 @@ PFGFGKRRCIGEGLARSELFLFIAHIMQKFHLIVPDGDPLPTADPVGGITLSAKPFKIQFLPRHGF
 """
     }
 }
+
+PEST_TARGET_PATHWAY = {
+    "fall_armyworm": "Chitin Synthase Pathway",
+    "brown_planthopper": "Chitin Synthase Pathway",
+    "aphid": "Acetylcholinesterase Neurotransmission",
+    "mosquito_larvae": "Acetylcholinesterase Neurotransmission",
+    "colorado_potato_beetle": "Voltage-Gated Sodium Channel Pathway",
+}

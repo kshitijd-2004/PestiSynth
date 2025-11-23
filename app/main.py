@@ -1,19 +1,21 @@
 import os
 import sys
-
 from functools import lru_cache
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 # Local modules
-from .pests import PESTS
+from .pests import PESTS, PEST_TARGET_PATHWAY
 from .pesticides import PESTICIDES
-from .safety_db import BANNED_PESTICIDES
-from .safety import safety_scan      
+from .safety_db import BANNED_PESTICIDES  # still available if you ever want it
+from .safety import (
+    safety_scan,
+    analyze_structural_alerts,
+    summarize_safety,
+)
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PLAPT_DIR = os.path.join(BASE_DIR, "WELP-PLAPT")
@@ -21,7 +23,7 @@ PLAPT_DIR = os.path.join(BASE_DIR, "WELP-PLAPT")
 if PLAPT_DIR not in sys.path:
     sys.path.append(PLAPT_DIR)
 
-from plapt import Plapt
+from plapt import Plapt  # type: ignore
 
 
 # =========================
@@ -31,6 +33,7 @@ from plapt import Plapt
 class PestInfo(BaseModel):
     id: str
     name: str
+    pathway: str
 
 
 class PesticideInfo(BaseModel):
@@ -50,14 +53,32 @@ class SafetyMatch(BaseModel):
     similarity: float
 
 
+class SafetyAlert(BaseModel):
+    id: str
+    name: str
+    description: str
+
+
 class MoleculeResult(BaseModel):
     name: str
     smiles: str
     score: float
     label: str
     interpretation: str
-    safety_matches: List[SafetyMatch]     
-    safety_flag: str                      
+
+    # Old safety fields (still used by frontend)
+    safety_matches: List[SafetyMatch]
+    safety_flag: str
+
+    # New, more detailed safety fields
+    safety_level: Optional[str] = None       # High / Medium / Low / Minimal / Unknown
+    safety_score: Optional[float] = None     # 0–1 heuristic score
+    safety_alerts: List[SafetyAlert] = Field(default_factory=list)
+
+    # Selectivity metrics
+    selectivity_index: Optional[float] = None
+    best_off_target_pest: Optional[str] = None
+    best_off_target_affinity: Optional[float] = None
 
 
 class BatchScoreRequest(BaseModel):
@@ -106,12 +127,12 @@ def score_single_molecule(protein_seq: str, smiles: str) -> tuple[float, str]:
 app = FastAPI(
     title="PestiSynth API",
     description="Predicts pesticide–protein affinity + safety scan using PLAPT and chemical similarity.",
-    version="1.1.0",
+    version="1.2.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],       
+    allow_origins=["*"],  # relax for local dev / demo
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -126,7 +147,11 @@ def health():
 @app.get("/pests", response_model=List[PestInfo])
 def list_pests():
     return [
-        PestInfo(id=pest_id, name=pest["name"])
+        PestInfo(
+            id=pest_id,
+            name=pest["name"],
+            pathway=PEST_TARGET_PATHWAY.get(pest_id, "Unknown"),
+        )
         for pest_id, pest in PESTS.items()
     ]
 
@@ -152,15 +177,21 @@ def score_batch(req: BatchScoreRequest):
     protein_seq = pest["sequence"]
 
     if not req.molecules:
-        raise HTTPException(status_code=400, detail="At least one molecule is required.")
+        raise HTTPException(
+            status_code=400,
+            detail="At least one molecule is required.",
+        )
 
     if len(req.molecules) > 5:
-        raise HTTPException(status_code=400, detail="Maximum of 5 molecules allowed.")
+        raise HTTPException(
+            status_code=400,
+            detail="Maximum of 5 molecules allowed.",
+        )
 
     results: List[MoleculeResult] = []
 
     for mol in req.molecules:
-        smiles = None
+        smiles: Optional[str] = None
         display_name = mol.name
 
         # Predefined pesticide
@@ -175,7 +206,7 @@ def score_batch(req: BatchScoreRequest):
             if display_name is None:
                 display_name = pesticide["name"]
 
-        # Custom SMILES
+        # Custom SMILES overrides (or provides) the structure
         if mol.smiles:
             smiles = mol.smiles.strip()
 
@@ -188,24 +219,59 @@ def score_batch(req: BatchScoreRequest):
         if not display_name:
             display_name = "Unnamed molecule"
 
-        # 1) Affinity Prediction
+        # 1) Affinity Prediction for the selected target pest
         affinity_value, label = score_single_molecule(protein_seq, smiles)
 
-        # 2) SafetyScan – RDKit similarity to banned list
-        safety_hits = safety_scan(smiles)       # list of dicts
+        # 1b) Selectivity analysis: compare to other pests
+        best_off_target_affinity: Optional[float] = None
+        best_off_target_name: Optional[str] = None
 
-        if safety_hits:
-            safety_flag = "⚠ Similar to hazardous or restricted chemicals"
-            safety_models = [SafetyMatch(name=h["name"], similarity=h["similarity"])
-                             for h in safety_hits]
+        for other_pest_id, other_pest in PESTS.items():
+            if other_pest_id == req.pest_id:
+                continue  # skip chosen target pest
+
+            other_protein_seq = other_pest["sequence"]
+            other_affinity, _ = score_single_molecule(other_protein_seq, smiles)
+
+            if best_off_target_affinity is None or other_affinity < best_off_target_affinity:
+                best_off_target_affinity = other_affinity
+                best_off_target_name = other_pest["name"]
+
+        # Compute selectivity index, if we evaluated any off-targets
+        if best_off_target_affinity is not None and affinity_value > 0:
+            selectivity_index = best_off_target_affinity / affinity_value
         else:
-            safety_flag = "No known toxicity matches detected"
-            safety_models = []
+            selectivity_index = None
+
+        # 2) Safety – similarity to banned list + structural alerts
+        safety_hits = safety_scan(smiles)  # [{name, similarity}, ...]
+        alert_hits = analyze_structural_alerts(smiles)  # [{id, name, description}, ...]
+
+        summary = summarize_safety(smiles, safety_hits, alert_hits)
+
+        safety_flag = summary.get("flag", "No safety assessment available")
+        safety_level = summary.get("level")
+        safety_score = summary.get("score")
+
+        safety_models = [
+            SafetyMatch(name=h["name"], similarity=h["similarity"])
+            for h in safety_hits
+        ]
+
+        safety_alert_models = [
+            SafetyAlert(
+                id=a["id"],
+                name=a["name"],
+                description=a["description"],
+            )
+            for a in alert_hits
+        ]
 
         # 3) Assemble result
         interpretation = (
             f"Predicted {label.lower()} binding to {pest['name']} protein target. "
-            "SafetyScan performed for banned/restricted pesticide similarity."
+            "SafetyScan includes similarity to banned/restricted pesticides plus "
+            "structural toxicophore alerts."
         )
 
         results.append(
@@ -217,6 +283,12 @@ def score_batch(req: BatchScoreRequest):
                 interpretation=interpretation,
                 safety_matches=safety_models,
                 safety_flag=safety_flag,
+                safety_level=safety_level,
+                safety_score=safety_score,
+                safety_alerts=safety_alert_models,
+                selectivity_index=selectivity_index,
+                best_off_target_pest=best_off_target_name,
+                best_off_target_affinity=best_off_target_affinity,
             )
         )
 

@@ -436,6 +436,7 @@ body {
 }
 
 .chip-high {
+  /* "Good" (green) – used for low risk / strong affinity */
   border: 1px solid rgba(74, 222, 128, 0.9);
   color: rgba(74, 222, 128, 0.9);
 }
@@ -446,9 +447,14 @@ body {
 }
 
 .chip-low {
-  
+  /* "Bad" (red) – used for high risk / weak affinity */
   border: 1px solid rgba(248, 113, 113, 0.9);
   color: rgba(248, 113, 113, 0.9);
+}
+
+.chip-neutral {
+  border: 1px solid rgba(148, 163, 184, 0.9);
+  color: #e5e7eb;
 }
 
 .chip-safety {
@@ -792,11 +798,14 @@ body {
   border-radius: 16px;
   border: 1px solid rgba(148, 163, 184, 0.7);
   background: rgba(15, 23, 42, 0.96);
-  padding: 16px 18px;
+
+  /* top | right | bottom | left */
+  padding: 11px 18px 6px 18px;  /* smaller bottom padding */
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 10px;                    /* slightly tighter vertical gap */
 }
+
 
 .report-card-main {
   display: grid;
@@ -835,8 +844,9 @@ body {
 .report-card-body {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
 }
+
 
 .report-card-header {
   display: flex;
@@ -848,6 +858,7 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .report-rank {
@@ -898,11 +909,107 @@ body {
   color: #e5e7eb;
 }
 
-.report-interpretation {
+.metric-subtext {
+  font-size: 11px;
+  color: #cbd5f5;         
+  opacity: 0.85;
+}
+
+
+.metric-note {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 4px 0 0;
+}
+
+.safety-flag-text {
+  color: #facc15;
+}
+
+/* Safety chip inside card header */
+
+.safety-chip {
+  margin-left: auto;
+}
+
+/* Safety summary panel under chart */
+
+.safety-summary {
+  margin-top: 14px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.5);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.safety-summary-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.safety-summary-title {
+  margin: 0;
   font-size: 14px;
-  line-height: 1.45;
-  color: #cbd5f5;
-  margin-top: 6px;
+  color: #e5e7eb;
+}
+
+.safety-summary-subtitle {
+  margin: 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.safety-summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 170px;
+  overflow-y: auto;
+}
+
+.safety-summary-row {
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(148, 163, 184, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.safety-summary-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.safety-summary-name {
+  font-size: 12px;
+  color: #e5e7eb;
+}
+
+.safety-level-chip {
+  font-size: 11px;
+}
+
+.safety-summary-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.safety-summary-score {
+  font-weight: 500;
+  color: #a5b4fc;
+}
+
+.safety-summary-alert {
+  opacity: 0.9;
 }
 
 /* Affinity chart */
@@ -969,7 +1076,7 @@ body {
 .affinity-chart-bar-fill {
   width: 65%;
   border-radius: 4px 4px 0 0;
-  background: #22c55e;
+  background: #7fdef8;
   box-shadow: 0 0 8px rgba(34, 197, 94, 0.35);
   transition: height 0.2s ease-out, transform 0.1s ease-out;
 }
@@ -995,10 +1102,9 @@ body {
 }
 
 .affinity-chart-note {
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 11px;
   color: #9ca3af;
-  text-align: right; /* or left/center if you prefer */
   opacity: 0.9;
 }
 
@@ -1064,4 +1170,45 @@ body {
   .affinity-chart-bar {
     max-width: 28px;
   }
+}
+/* === REPORT CARD FONT SIZE BOOST === */
+
+/* Main title inside each card */
+.report-card-title {
+  font-size: 1.2rem;     
+}
+
+/* SMILES text */
+.report-card-smiles code {
+  font-size: 0.92rem;    
+}
+
+/* Metric labels (Predicted affinity, Selectivity index, Toxicity Risk Score) */
+.metric-label {
+  font-size: 0.90rem;     
+}
+
+/* Metric numeric values */
+.metric-value {
+  font-size: 1.15rem;     
+  font-weight: 600;       
+}
+
+/* Small explanatory note */
+.metric-note {
+  font-size: 0.90rem;
+}
+
+/* Safety warning text */
+.safety-flag-text {
+  font-size: 0.95rem;
+}
+
+/* Chips (High affinity, safety risk, etc.) */
+.chip {
+  font-size: 0.85rem;
+}
+
+.report-card p:last-child {
+  margin-bottom: 0;
 }

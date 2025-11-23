@@ -30,7 +30,7 @@ import imgMalathion from "./assets/pesticide_img/Malathion.png";
 
 const API_BASE_URL = "http://localhost:8000"; // change if needed
 
-// Optional: map pest/pesticide IDs to image URLs
+// map pest/pesticide IDs to image URLs
 const PEST_IMAGE_MAP = {
   fall_armyworm: imgFallArmyworm,
   aphid: imgAphids,
@@ -202,11 +202,11 @@ function App() {
         let counter = customCounter;
 
         for (const smiles of rawTokens) {
-          const already =
-            next.some((m) => m.smiles === smiles) ||
+          const limitReached =
             selectedPesticideIds.length + next.length >= MAX_MOLECULES;
+          const already = next.some((m) => m.smiles === smiles);
 
-          if (already) {
+          if (limitReached || already) {
             skipped += 1;
             continue;
           }
@@ -297,7 +297,7 @@ function App() {
 
   const selectedPest = pests.find((p) => p.id === selectedPestId) || null;
 
-  // link pesticide metadata (for report)
+  // link pesticide metadata (for report) – order matches payload: first library, then custom
   const selectedPesticideMetas = selectedPesticideIds.map(
     (id) => pesticides.find((p) => p.id === id) || null
   );
@@ -320,7 +320,7 @@ function App() {
         <div className="app-header-inner">
           <h1 className="app-title">PestiSynth</h1>
           <p className="app-subtitle">
-            Predict pesticide–protein affinity and safety with PLAPT.
+            Predict pesticide–protein affinity, selectivity, and safety with PLAPT.
           </p>
         </div>
       </header>
@@ -724,7 +724,7 @@ function ReportView({
           ← Back to selection
         </button>
         <div className="report-header-text">
-          <h2>Affinity & Safety Report</h2>
+          <h2>Affinity, Selectivity & Safety Report</h2>
           <p>
             Target pest: <strong>{pestName}</strong> ·{" "}
             {sorted.length} molecule{sorted.length !== 1 ? "s" : ""} evaluated
@@ -752,8 +752,8 @@ function ReportView({
           <div className="report-hero-content">
             <h3 className="report-hero-title">{pestName}</h3>
             <p className="report-hero-subtitle">
-              Protein affinity profile generated using PLAPT, based on the
-              selected candidate molecules.
+              Protein affinity profile generated using PLAPT, including
+              selectivity across pests and structural safety screening.
             </p>
 
             <div className="report-hero-meta-row">
@@ -790,7 +790,7 @@ function ReportView({
         </div>
       </section>
 
-      {/* Two-column layout: molecules + chart */}
+      {/* Two-column layout: molecules + chart + safety panel */}
       <section className="report-section">
         <div className="report-two-column">
           <div className="report-column">
@@ -798,12 +798,18 @@ function ReportView({
               Molecule profiles (ranked best to worst)
             </h3>
             <p className="report-section-subtitle">
-              Lower affinity values (µM) indicate stronger binding for this model.
+              Lower affinity values (µM) indicate stronger binding for this
+              model. Selectivity index compares binding to the chosen pest vs
+              other pests (values &gt;1 mean more selective for this target).
             </p>
 
             <div className="report-list">
               {sorted.map((pair, idx) => (
-                <ReportCard key={pair.result.name + idx} pair={pair} rank={idx + 1} />
+                <ReportCard
+                  key={pair.result.name + idx}
+                  pair={pair}
+                  rank={idx + 1}
+                />
               ))}
             </div>
           </div>
@@ -814,11 +820,19 @@ function ReportView({
                 Affinity comparison chart
               </h3>
               <p className="report-section-subtitle">
-                Bar height represents predicted affinity in µM (0 to max across
-                selected molecules).
+                Taller bars indicate lower predicted affinity (better binding)
+                for the chosen pest. Values are in µM.
               </p>
 
               <BarChartAffinity pairs={sorted} maxScore={maxScore} />
+
+              <div className="affinity-chart-note">
+                Affinity is predicted per molecule for this pest; the selectivity
+                index combines these values with off-target pests to highlight
+                candidates that are both potent and focused.
+              </div>
+
+              <SafetySummaryPanel pairs={sorted} />
             </div>
           )}
         </div>
@@ -840,7 +854,17 @@ function ReportCard({ pair, rank }) {
   const imgSrc =
     !isCustom && meta && meta.id ? PESTICIDE_IMAGE_MAP[meta.id] : null;
 
-  const { score, label, interpretation } = result;
+  const {
+    score,
+    label,
+    interpretation,
+    safety_flag,
+    safety_level,
+    safety_score,
+    selectivity_index,
+    best_off_target_pest,
+    best_off_target_affinity,
+  } = result;
 
   const labelColorClass =
     label === "High"
@@ -848,6 +872,13 @@ function ReportCard({ pair, rank }) {
       : label === "Medium"
       ? "chip-medium"
       : "chip-low";
+
+  // Safety level chip styling mapping
+  let safetyLevelClass = "chip-neutral";
+  if (safety_level === "High") safetyLevelClass = "chip-low";
+  else if (safety_level === "Medium") safetyLevelClass = "chip-medium";
+  else if (safety_level === "Low" || safety_level === "Minimal")
+    safetyLevelClass = "chip-high";
 
   return (
     <div className="report-card">
@@ -868,6 +899,11 @@ function ReportCard({ pair, rank }) {
               <span className="report-rank">#{rank}</span>
               <h4 className="report-card-title">{displayName}</h4>
               <span className={`chip ${labelColorClass}`}>{label} affinity</span>
+              {safety_level && (
+                <span className={`chip safety-chip ${safetyLevelClass}`}>
+                  {safety_level} safety risk
+                </span>
+              )}
             </div>
             <div className="report-card-smiles">
               <span>SMILES: </span>
@@ -882,10 +918,124 @@ function ReportCard({ pair, rank }) {
                 {typeof score === "number" ? score.toFixed(4) : score}
               </div>
             </div>
+
+{typeof selectivity_index === "number" && (
+  <div className="metric">
+    <div className="metric-label">Selectivity index</div>
+
+    <div className="metric-value">
+      {selectivity_index.toFixed(2)}×
+      <span className="metric-subtext">
+        {" "}
+        (vs {best_off_target_pest || "off-target pest"}: off-target affinity{" "}
+        {typeof best_off_target_affinity === "number"
+          ? best_off_target_affinity.toFixed(4)
+          : "—"} µM)
+      </span>
+    </div>
+  </div>
+)}
+
+
+
+            {typeof safety_score === "number" && (
+              <div className="metric">
+                <div className="metric-label">Toxicity Risk Score (0–1)</div>
+                <div className="metric-value">
+                  {safety_score.toFixed(2)}
+                </div>
+              </div>
+            )}
           </div>
+
+          {typeof selectivity_index === "number" && (
+            <p className="metric-note">
+              Higher selectivity index means stronger preference for{" "}
+              {pair?.result?.best_off_target_pest
+                ? `the chosen pest vs ${best_off_target_pest}`
+                : "the chosen pest vs other pests"}
+              .
+            </p>
+          )}
+
+          {safety_flag && (
+            <p className="metric-note safety-flag-text">{safety_flag}</p>
+          )}
 
           <p className="report-interpretation">{interpretation}</p>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------- Safety summary panel (under chart) ---------- */
+
+function SafetySummaryPanel({ pairs }) {
+  if (!pairs || pairs.length === 0) return null;
+
+  return (
+    <div className="safety-summary">
+      <div className="safety-summary-header">
+        <h4 className="safety-summary-title">Safety insights across molecules</h4>
+        <p className="safety-summary-subtitle">
+          Combines structural similarity to banned/restricted pesticides with
+          toxicophore alerts. Use this to spot candidates that are potent but
+          structurally safer.
+        </p>
+      </div>
+
+      <div className="safety-summary-list">
+        {pairs.map(({ result }, idx) => {
+          const {
+            name,
+            smiles,
+            safety_level,
+            safety_score,
+            safety_alerts = [],
+            safety_matches = [],
+          } = result;
+
+          const displayName =
+            name || (smiles ? `Molecule ${idx + 1}` : `Molecule ${idx + 1}`);
+
+          const mainAlert =
+            safety_alerts.length > 0
+              ? safety_alerts[0].name
+              : safety_matches.length > 0
+              ? `Similar to ${safety_matches[0].name}`
+              : "No major alerts detected";
+
+          const levelLabel = safety_level || "Unknown";
+
+          let levelClass = "chip-neutral";
+          if (safety_level === "High") levelClass = "chip-low";
+          else if (safety_level === "Medium") levelClass = "chip-medium";
+          else if (safety_level === "Low" || safety_level === "Minimal")
+            levelClass = "chip-high";
+
+          return (
+            <div
+              key={`${displayName}-${smiles || ""}-${idx}`}
+              className="safety-summary-row"
+            >
+              <div className="safety-summary-main">
+                <span className="safety-summary-name">{displayName}</span>
+                <span className={`chip safety-level-chip ${levelClass}`}>
+                  {levelLabel} risk
+                </span>
+              </div>
+              <div className="safety-summary-meta">
+                {typeof safety_score === "number" && (
+                  <span className="safety-summary-score">
+                    Score: {safety_score.toFixed(2)}
+                  </span>
+                )}
+                <span className="safety-summary-alert">{mainAlert}</span>
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -912,10 +1062,14 @@ function BarChartAffinity({ pairs, maxScore }) {
           <div className="affinity-chart-bars">
             {pairs.map(({ result }) => {
               const scoreNum = Number(result.score);
+              const clamped =
+                safeMax > 0 ? Math.min(Math.max(scoreNum, 0), safeMax) : 0;
 
-              // Keep very small affinities visible with a minimum height
-              const rawPct = (scoreNum / safeMax) * 100;
-              const heightPct = Math.max((safeMax - scoreNum) / safeMax * 100, 3);
+              // Taller bar = lower affinity (better binding)
+              const heightPct = Math.max(
+                ((safeMax - clamped) / safeMax) * 100,
+                3
+              );
 
               const label = result.name || result.smiles;
 
