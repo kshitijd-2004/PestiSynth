@@ -10,7 +10,7 @@ from pydantic import BaseModel, Field
 # Local modules
 from .pests import PESTS, PEST_TARGET_PATHWAY
 from .pesticides import PESTICIDES
-from .safety_db import BANNED_PESTICIDES  # still available if you ever want it
+from .safety_db import BANNED_PESTICIDES
 from .safety import (
     safety_scan,
     analyze_structural_alerts,

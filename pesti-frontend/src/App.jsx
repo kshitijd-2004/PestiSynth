@@ -1,4 +1,3 @@
-// src/App.jsx
 import React, { useEffect, useState } from "react";
 import imgFallArmyworm from "./assets/pest_img/Fall_Armyworm.png";
 import imgAphids from "./assets/pest_img/Aphids.png";
@@ -28,7 +27,7 @@ import imgThiacloprid from "./assets/pesticide_img/Thiacloprid.png";
 import imgThiamethoxam from "./assets/pesticide_img/Thiamethoxam.png";
 import imgMalathion from "./assets/pesticide_img/Malathion.png";
 
-const API_BASE_URL = "http://localhost:8000"; // change if needed
+const API_BASE_URL = "http://localhost:8000";
 
 // map pest/pesticide IDs to image URLs
 const PEST_IMAGE_MAP = {
@@ -293,6 +292,21 @@ function App() {
 
   const handleBackToSelection = () => {
     setView(VIEW_SELECTION);
+  };
+  const handleResetSelection = () => {
+    // clear pest + library picks
+    setSelectedPestId(null);
+    setSelectedPesticideIds([]);
+
+    // clear custom molecules + inputs
+    setCustomMolecules([]);
+    setCustomInput("");
+    setCustomCounter(1);
+    setFileImportMessage("");
+
+    // clear any previous scoring state
+    setScoreResponse(null);
+    setScoreError(null);
   };
 
   const selectedPest = pests.find((p) => p.id === selectedPestId) || null;
@@ -562,7 +576,7 @@ function App() {
           </main>
 
           {/* Bottom bar for selection view */}
-          <section className="bottom-bar">
+                   <section className="bottom-bar">
             <div className="bottom-bar-inner">
               <div>
                 <div className="bottom-bar-title">
@@ -577,17 +591,31 @@ function App() {
                   <strong>{totalSelectedMolecules}</strong>
                 </div>
               </div>
-              <button
-                className="primary-button"
-                disabled={
-                  !selectedPestId ||
-                  totalSelectedMolecules === 0 ||
-                  scoreLoading
-                }
-                onClick={handleRunScoring}
-              >
-                {scoreLoading ? "Running analysis…" : "Open Affinity Report"}
-              </button>
+
+              <div className="bottom-bar-actions">
+                <button
+                  type="button"
+                  className="secondary-button bottom-bar-reset"
+                  onClick={handleResetSelection}
+                  disabled={
+                    !selectedPestId && totalSelectedMolecules === 0
+                  }
+                >
+                  Reset selection
+                </button>
+
+                <button
+                  className="primary-button"
+                  disabled={
+                    !selectedPestId ||
+                    totalSelectedMolecules === 0 ||
+                    scoreLoading
+                  }
+                  onClick={handleRunScoring}
+                >
+                  {scoreLoading ? "Running analysis…" : "Open Affinity Report"}
+                </button>
+              </div>
             </div>
           </section>
         </>
