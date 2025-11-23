@@ -90,11 +90,11 @@ def score_single_molecule(protein_seq: str, smiles: str) -> tuple[float, str]:
 
     # Simple classification
     if affinity_uM <= 0.1:
-        label = "High"
+        label = "Low"
     elif affinity_uM <= 1.0:
         label = "Medium"
     else:
-        label = "Low"
+        label = "High"
 
     return affinity_uM, label
 

@@ -528,8 +528,8 @@ body {
 
 /* High affinity → green text + border */
 .chip-high {
-  border: 1px solid rgba(74, 222, 128, 0.9);
-  color: rgba(74, 222, 128, 0.9);
+  border: 1px solid rgba(248, 113, 113, 0.9);;
+  color: rgba(248, 113, 113, 0.9);
 }
 
 /* Medium affinity → yellow text + border */
@@ -540,8 +540,8 @@ body {
 
 /* Low affinity → red text + border */
 .chip-low {
-  border: 1px solid rgba(248, 113, 113, 0.9);
-  color: rgba(248, 113, 113, 0.9);
+  border: 1px solid rgba(74, 222, 128, 0.9);;
+  color: rgba(74, 222, 128, 0.9);
 }
 
 /* Safety hits → red chip */
@@ -860,7 +860,7 @@ body {
 .affinity-chart-inner {
   display: flex;
   gap: 8px;
-  min-height: 200px;
+  min-height: 220px;
 }
 
 .affinity-chart-y {
@@ -872,12 +872,24 @@ body {
   padding-right: 6px;
 }
 
+/* Right side: plot (bars + labels) */
+.affinity-chart-plot {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Bars container with visible axes */
 .affinity-chart-bars {
   flex: 1;
   display: flex;
   align-items: flex-end;
-  gap: 8px;
-  padding-bottom: 6px;
+  gap: 10px;
+  padding-left: 8px;
+  /* Important: no bottom padding so bars start exactly at the x-axis */
+  padding-bottom: 0;
+  border-left: 1px solid rgba(148, 163, 184, 0.9);   /* Y-axis line */
+  border-bottom: 1px solid rgba(148, 163, 184, 0.9); /* X-axis line */
 }
 
 .affinity-chart-bar-wrapper {
@@ -887,34 +899,49 @@ body {
   align-items: center;
 }
 
+/* Vertical bar itself (no “container” look) */
 .affinity-chart-bar {
   width: 100%;
   max-width: 40px;
   height: 160px;
-  border-radius: 6px 6px 0 0;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(55, 65, 81, 0.9);
   display: flex;
   align-items: flex-end;
-  overflow: hidden;
+  justify-content: center;
 }
 
+/* Solid bar columns */
 .affinity-chart-bar-fill {
-  width: 100%;
-  background: linear-gradient(to top, #4f46e5, #22c55e);
-  transition: height 0.2s ease-out;
+  width: 65%;
+  border-radius: 4px 4px 0 0;
+  background: #22c55e; /* simple solid bar */
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.35);
+  transition: height 0.2s ease-out, transform 0.1s ease-out;
 }
 
-.affinity-chart-x-label {
-  margin-top: 4px;
+.affinity-chart-bar-fill:hover {
+  transform: translateY(-2px);
+}
+
+/* Category labels below the axis, aligned with bars */
+.affinity-chart-x-categories {
+  display: flex;
+  gap: 10px;
+  padding-left: 8px;
+  margin-top: 6px;
+}
+
+.affinity-chart-x-category {
+  flex: 1;
+  text-align: center;
   font-size: 10px;
   color: #9ca3af;
-  text-align: center;
-  word-break: break-all;
+  word-break: break-word;
 }
 
+/* Axis titles */
+
 .affinity-chart-axis-labels {
-  margin-top: 6px;
+  margin-top: 8px;
   display: flex;
   justify-content: space-between;
   font-size: 11px;
@@ -926,37 +953,9 @@ body {
   opacity: 0.9;
 }
 
-/* Chips (keep your earlier colors; just reminder)
-
-.chip { ... }
-.chip-high { ... }
-.chip-medium { ... }
-.chip-low { ... }
-.chip-safety { ... }
-*/
-
-@media (max-width: 900px) {
-  .report-hero {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .report-two-column {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .report-column-chart {
-    margin-top: 8px;
-  }
-}
-
 @media (max-width: 640px) {
-  .report-header-row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
   .affinity-chart-inner {
-    min-height: 180px;
+    min-height: 200px;
   }
 
   .affinity-chart-bar {

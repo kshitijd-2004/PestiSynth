@@ -578,51 +578,74 @@ function ReportCard({ pair, rank }) {
 
 function BarChartAffinity({ pairs, maxScore }) {
   const safeMax = maxScore || 1;
+  const axisMaxLabel = safeMax.toFixed(2);
 
   return (
     <div className="affinity-chart">
       <div className="affinity-chart-inner">
+        {/* Y axis numeric labels */}
         <div className="affinity-chart-y">
-          <span>{safeMax.toFixed(2)}</span>
+          <span>{axisMaxLabel}</span>
           <span>0</span>
         </div>
 
-        <div className="affinity-chart-bars">
-          {pairs.map(({ result }) => {
-            const scoreNum = Number(result.score);
-            const heightPct = (scoreNum / safeMax) * 100;
-            const shortSmiles =
-              result.smiles.length > 16
-                ? result.smiles.slice(0, 15) + "…"
-                : result.smiles;
+        {/* Plot area: bars + category labels */}
+        <div className="affinity-chart-plot">
+          {/* Bars with axes */}
+          <div className="affinity-chart-bars">
+            {pairs.map(({ result }) => {
+              const scoreNum = Number(result.score);
 
-            return (
-              <div
-                className="affinity-chart-bar-wrapper"
-                key={result.name + result.smiles}
-              >
-                <div className="affinity-chart-bar">
-                  <div
-                    className="affinity-chart-bar-fill"
-                    style={{ height: `${heightPct}%` }}
-                    title={`${result.name} – ${scoreNum.toFixed(4)} µM`}
-                  />
+              // Height proportional to affinity, but enforce a minimum so very
+              // small numbers (like 0.06) are still visible.
+              const rawPct = (scoreNum / safeMax) * 100;
+              const heightPct = Math.max(rawPct, 3); // at least ~3% of bar area
+
+              const label = result.name || result.smiles;
+
+              return (
+                <div
+                  className="affinity-chart-bar-wrapper"
+                  key={result.name + result.smiles}
+                >
+                  <div className="affinity-chart-bar">
+                    <div
+                      className="affinity-chart-bar-fill"
+                      style={{ height: `${heightPct}%` }}
+                      title={`${label} – ${scoreNum.toFixed(4)} µM`}
+                    />
+                  </div>
                 </div>
-                <div className="affinity-chart-x-label">
-                  <span title={result.smiles}>{shortSmiles}</span>
+              );
+            })}
+          </div>
+
+          {/* X axis category labels (compound names) under the axis */}
+          <div className="affinity-chart-x-categories">
+            {pairs.map(({ result }) => {
+              const label = result.name || result.smiles;
+              return (
+                <div
+                  className="affinity-chart-x-category"
+                  key={`label-${result.name + result.smiles}`}
+                >
+                  <span title={label}>{label}</span>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       </div>
 
+      {/* Axis titles */}
       <div className="affinity-chart-axis-labels">
         <span className="axis-y-label">Affinity (µM)</span>
-        <span className="axis-x-label">SMILES</span>
+        <span className="axis-x-label">Compound</span>
       </div>
     </div>
   );
 }
+
+
 
 export default App;
