@@ -795,7 +795,7 @@ function ReportView({
         <div className="report-two-column">
           <div className="report-column">
             <h3 className="report-section-title">
-              Molecule profiles (ranked best to worst)
+              Molecule Profiles (Best to Worst)
             </h3>
             <p className="report-section-subtitle">
               Lower affinity values (µM) indicate stronger binding for this
@@ -977,7 +977,7 @@ function SafetySummaryPanel({ pairs }) {
   return (
     <div className="safety-summary">
       <div className="safety-summary-header">
-        <h4 className="safety-summary-title">Safety insights across molecules</h4>
+        <h4 className="safety-summary-title">Safety Insights Across Molecules</h4>
         <p className="safety-summary-subtitle">
           Combines structural similarity to banned/restricted pesticides with
           toxicophore alerts. Use this to spot candidates that are potent but

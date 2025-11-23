@@ -672,7 +672,7 @@ body {
 
 .report-section-title {
   margin: 0 0 6px;
-  font-size: 16px;
+  font-size: 20px;
   color: #e5e7eb;
 }
 
@@ -951,7 +951,7 @@ body {
 
 .safety-summary-title {
   margin: 0;
-  font-size: 14px;
+  font-size: 20px;
   color: #e5e7eb;
 }
 
@@ -965,19 +965,18 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  max-height: 170px;
-  overflow-y: auto;
 }
 
 .safety-summary-row {
-  padding: 6px 8px;
-  border-radius: 10px;
+  padding: 12px 14px;
+  border-radius: 14px;
   background: rgba(15, 23, 42, 0.98);
-  border: 1px solid rgba(148, 163, 184, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.75);
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
+
 
 .safety-summary-main {
   display: flex;
@@ -987,7 +986,7 @@ body {
 }
 
 .safety-summary-name {
-  font-size: 12px;
+  font-size: 14px;
   color: #e5e7eb;
 }
 
@@ -999,7 +998,7 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   color: #9ca3af;
 }
 
@@ -1010,6 +1009,7 @@ body {
 
 .safety-summary-alert {
   opacity: 0.9;
+  font-size: 12px;
 }
 
 /* Affinity chart */
