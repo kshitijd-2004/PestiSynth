@@ -1,0 +1,3 @@
+[submodule "app/WELP-PLAPT"]
+	path = app/WELP-PLAPT
+	url = https://github.com/Bindwell/PLAPT.git

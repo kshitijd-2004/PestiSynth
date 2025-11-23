@@ -129,10 +129,13 @@ app = FastAPI(
     description="Predicts pesticide–protein affinity + safety scan using PLAPT and chemical similarity.",
     version="1.2.0",
 )
-
+origins = [
+    "http://localhost:5173",             
+    "pesti-synth.vercel.app",      
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # relax for local dev / demo
+    allow_origins=origins,  
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
