@@ -1,17 +1,61 @@
 // src/App.jsx
 import React, { useEffect, useState } from "react";
+import imgFallArmyworm from "./assets/pest_img/Fall_Armyworm.png";
+import imgAphids from "./assets/pest_img/Aphids.png";
+import imgColoradoPotatoBeetle from "./assets/pest_img/Colorado_Potato_Beetle.png";
+import imgBrownPlanthopper from "./assets/pest_img/Brown_Planthopper.png";
+import imgMosquitoLarvae from "./assets/pest_img/Mosquito_Larvae.png";
+
+
+import imgAcetamiprid from "./assets/pesticide_img/Acetamiprid.png";
+import imgBifenthrin from "./assets/pesticide_img/Bifenthrin.png";
+import imgChlorpyrifos from "./assets/pesticide_img/Chlorpyrifos.png";
+import imgClothianidin from "./assets/pesticide_img/Clothianidin.png";
+import imgCypermethrin from "./assets/pesticide_img/Cypermethrin.png";
+import imgDeltamethrin from "./assets/pesticide_img/Deltamethrin.png";
+import imgDiazinon from "./assets/pesticide_img/Diazinon.png";
+import imgDichlorvos from "./assets/pesticide_img/Dichlorvos.png";
+import imgDinotefuran from "./assets/pesticide_img/Dinotefuran.png";
+import imgFenvalerate from "./assets/pesticide_img/Fenvalerate.png";
+import imgImidacloprid from "./assets/pesticide_img/Imidacloprid.png";
+import imgLambdaCyhalothrin from "./assets/pesticide_img/Lambda-cyhalothrin.png";
+import imgNitenpyram from "./assets/pesticide_img/Nitenpyram.png";
+import imgParathion from "./assets/pesticide_img/Parathion.png";
+import imgPermethrin from "./assets/pesticide_img/Permethrin.png";
+import imgThiacloprid from "./assets/pesticide_img/Thiacloprid.png";
+import imgThiamethoxam from "./assets/pesticide_img/Thiamethoxam.png";
+import imgMalathion from "./assets/pesticide_img/Malathion.png";
 
 const API_BASE_URL = "http://localhost:8000"; // change if needed
 
 // Optional: map pest/pesticide IDs to image URLs
 const PEST_IMAGE_MAP = {
-  // fall_armyworm: "/images/pests/fall_armyworm.jpg",
-  // mosquito_larvae: "/images/pests/mosquito_larvae.jpg",
+  fall_armyworm: imgFallArmyworm,
+  aphid: imgAphids,
+  colorado_potato_beetle: imgColoradoPotatoBeetle,
+  brown_planthopper: imgBrownPlanthopper,
+  mosquito_larvae: imgMosquitoLarvae,
 };
 
 const PESTICIDE_IMAGE_MAP = {
-  // "2_4_D": "/images/pesticides/2_4_D.png",
-  // "glyphosate": "/images/pesticides/glyphosate.png",
+  imidacloprid: imgImidacloprid,
+  thiamethoxam: imgThiamethoxam,
+  clothianidin: imgClothianidin,
+  acetamiprid_metabolite: imgAcetamiprid,
+  nitenpyram: imgNitenpyram,
+  dinotefuran: imgDinotefuran,
+  thiacloprid_amide: imgThiacloprid,
+  permethrin: imgPermethrin,
+  cypermethrin: imgCypermethrin,
+  deltamethrin: imgDeltamethrin,
+  lambda_cyhalothrin: imgLambdaCyhalothrin,
+  fenvalerate: imgFenvalerate,
+  bifenthrin: imgBifenthrin,
+  chlorpyrifos: imgChlorpyrifos,
+  diazinon: imgDiazinon,
+  dichlorvos: imgDichlorvos,
+  parathion: imgParathion,
+  phosmet: imgMalathion,
 };
 
 const VIEW_SELECTION = "selection";
@@ -35,6 +79,10 @@ function App() {
   const [scoreResponse, setScoreResponse] = useState(null);
 
   const [view, setView] = useState(VIEW_SELECTION);
+
+  // search inputs
+  const [pestSearch, setPestSearch] = useState("");
+  const [pesticideSearch, setPesticideSearch] = useState("");
 
   useEffect(() => {
     const fetchPests = async () => {
@@ -136,9 +184,22 @@ function App() {
 
   const selectedPest = pests.find((p) => p.id === selectedPestId) || null;
 
-  // For the report view, we want pesticide metadata aligned with request order
-  const selectedPesticideMetas = selectedPesticideIds
-    .map((id) => pesticides.find((p) => p.id === id) || null);
+  // link pesticide metadata (for report)
+  const selectedPesticideMetas = selectedPesticideIds.map(
+    (id) => pesticides.find((p) => p.id === id) || null
+  );
+
+  // search/filtering
+  const pestQuery = pestSearch.trim().toLowerCase();
+  const pesticideQuery = pesticideSearch.trim().toLowerCase();
+
+  const filteredPests = pests.filter((p) =>
+    p.name.toLowerCase().includes(pestQuery)
+  );
+
+  const filteredPesticides = pesticides.filter((p) =>
+    p.name.toLowerCase().includes(pesticideQuery)
+  );
 
   return (
     <div className="app">
@@ -200,11 +261,23 @@ function App() {
                 </p>
               </div>
 
+              <div className="search-row">
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search pests by name…"
+                  value={pestSearch}
+                  onChange={(e) => setPestSearch(e.target.value)}
+                />
+              </div>
+
               {pestsLoading ? (
                 <div className="loading">Loading pests…</div>
+              ) : filteredPests.length === 0 ? (
+                <div className="no-results">No pests match your search.</div>
               ) : (
                 <div className="card-grid">
-                  {pests.map((pest) => (
+                  {filteredPests.map((pest) => (
                     <PestCard
                       key={pest.id}
                       pest={pest}
@@ -232,15 +305,29 @@ function App() {
                 </div>
               )}
 
+              <div className="search-row">
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search pesticides by name…"
+                  value={pesticideSearch}
+                  onChange={(e) => setPesticideSearch(e.target.value)}
+                />
+              </div>
+
               {pesticidesLoading ? (
                 <div className="loading">Loading pesticides…</div>
+              ) : filteredPesticides.length === 0 ? (
+                <div className="no-results">
+                  No pesticides match your search.
+                </div>
               ) : (
                 <div
                   className={`card-grid ${
                     !selectedPestId ? "card-grid-disabled" : ""
                   }`}
                 >
-                  {pesticides.map((p) => (
+                  {filteredPesticides.map((p) => (
                     <PesticideCard
                       key={p.id}
                       pesticide={p}
@@ -399,13 +486,11 @@ function ReportView({ scoreResponse, onBack, pest, pesticideMetas }) {
   const pestName = pest?.name || scoreResponse.pest;
   const pestImgSrc = pest ? PEST_IMAGE_MAP[pest.id] : null;
 
-  // Pair each result with the pesticide metadata in request order
   const paired = scoreResponse.results.map((res, idx) => ({
     result: res,
     meta: pesticideMetas[idx] || null,
   }));
 
-  // Sort by score (best to worst) but keep meta attached
   const sorted = [...paired].sort(
     (a, b) => Number(a.result.score) - Number(b.result.score)
   );
@@ -486,7 +571,8 @@ function ReportView({ scoreResponse, onBack, pest, pesticideMetas }) {
               Molecule profiles (ranked best to worst)
             </h3>
             <p className="report-section-subtitle">
-              Lower affinity values (µM) indicate stronger binding for this model.
+              Each profile combines the library pesticide information with PLAPT
+              affinity predictions.
             </p>
 
             <div className="report-list">
@@ -533,11 +619,7 @@ function ReportCard({ pair, rank }) {
       <div className="report-card-main">
         <div className="report-card-image-wrapper">
           {imgSrc ? (
-            <img
-              src={imgSrc}
-              alt={name}
-              className="report-card-image"
-            />
+            <img src={imgSrc} alt={name} className="report-card-image" />
           ) : (
             <div className="report-card-image-placeholder">
               <span>{name.charAt(0).toUpperCase()}</span>
@@ -574,7 +656,7 @@ function ReportCard({ pair, rank }) {
   );
 }
 
-/* ---------- Simple bar chart (CSS-only) ---------- */
+/* ---------- Bar chart ---------- */
 
 function BarChartAffinity({ pairs, maxScore }) {
   const safeMax = maxScore || 1;
@@ -589,17 +671,16 @@ function BarChartAffinity({ pairs, maxScore }) {
           <span>0</span>
         </div>
 
-        {/* Plot area: bars + category labels */}
+        {/* Right side: plot (bars + labels) */}
         <div className="affinity-chart-plot">
           {/* Bars with axes */}
           <div className="affinity-chart-bars">
             {pairs.map(({ result }) => {
               const scoreNum = Number(result.score);
 
-              // Height proportional to affinity, but enforce a minimum so very
-              // small numbers (like 0.06) are still visible.
+              // Keep very small affinities visible with a minimum height
               const rawPct = (scoreNum / safeMax) * 100;
-              const heightPct = Math.max(rawPct, 3); // at least ~3% of bar area
+              const heightPct = Math.max(rawPct, 3);
 
               const label = result.name || result.smiles;
 
@@ -645,7 +726,5 @@ function BarChartAffinity({ pairs, maxScore }) {
     </div>
   );
 }
-
-
 
 export default App;
