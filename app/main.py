@@ -1,15 +1,19 @@
-# main.py
 import os
-import sys 
+import sys
 
 from functools import lru_cache
 from typing import List, Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
+from pydantic import BaseModel
+
+# Local modules
 from .pests import PESTS
 from .pesticides import PESTICIDES
-from pydantic import BaseModel
+from .safety_db import BANNED_PESTICIDES
+from .safety import safety_scan      
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PLAPT_DIR = os.path.join(BASE_DIR, "WELP-PLAPT")
@@ -41,9 +45,9 @@ class MoleculeInput(BaseModel):
     smiles: Optional[str] = None
 
 
-class BatchScoreRequest(BaseModel):
-    pest_id: str
-    molecules: List[MoleculeInput]
+class SafetyMatch(BaseModel):
+    name: str
+    similarity: float
 
 
 class MoleculeResult(BaseModel):
@@ -52,6 +56,13 @@ class MoleculeResult(BaseModel):
     score: float
     label: str
     interpretation: str
+    safety_matches: List[SafetyMatch]     
+    safety_flag: str                      
+
+
+class BatchScoreRequest(BaseModel):
+    pest_id: str
+    molecules: List[MoleculeInput]
 
 
 class BatchScoreResponse(BaseModel):
@@ -60,7 +71,7 @@ class BatchScoreResponse(BaseModel):
 
 
 # =========================
-# PLAPT wrapper
+# PLAPT Model Loader
 # =========================
 
 @lru_cache(maxsize=1)
@@ -69,15 +80,15 @@ def get_plapt_model() -> Plapt:
     return Plapt(prediction_module_path=model_path)
 
 
-def score_single_molecule(protein_seq: str, smiles: str) -> tuple[float, str, float]:
+def score_single_molecule(protein_seq: str, smiles: str) -> tuple[float, str]:
     plapt_model = get_plapt_model()
 
     results = plapt_model.score_candidates(protein_seq, [smiles])
     result = results[0]
 
     affinity_uM = float(result["affinity_uM"])
-    # neg_log10 = float(result["neg_log10_affinity_M"])
 
+    # Simple classification
     if affinity_uM <= 0.1:
         label = "High"
     elif affinity_uM <= 1.0:
@@ -88,20 +99,19 @@ def score_single_molecule(protein_seq: str, smiles: str) -> tuple[float, str, fl
     return affinity_uM, label
 
 
-
 # =========================
 # FastAPI app
 # =========================
 
 app = FastAPI(
-    title="Pest Pesticide Affinity API",
-    description="Predicts binding affinity between pest proteins and pesticide molecules using PLAPT.",
-    version="0.1.0",
+    title="PestiSynth API",
+    description="Predicts pesticide–protein affinity + safety scan using PLAPT and chemical similarity.",
+    version="1.1.0",
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],       
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -129,6 +139,10 @@ def list_pesticides():
     ]
 
 
+# =========================
+# Main Scoring Endpoint
+# =========================
+
 @app.post("/score/batch", response_model=BatchScoreResponse)
 def score_batch(req: BatchScoreRequest):
     pest = PESTS.get(req.pest_id)
@@ -149,36 +163,60 @@ def score_batch(req: BatchScoreRequest):
         smiles = None
         display_name = mol.name
 
+        # Predefined pesticide
         if mol.pesticide_id:
             pesticide = PESTICIDES.get(mol.pesticide_id)
             if pesticide is None:
-                raise HTTPException(status_code=400, detail=f"Unknown pesticide_id: {mol.pesticide_id}")
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Unknown pesticide_id: {mol.pesticide_id}",
+                )
             smiles = pesticide["smiles"]
             if display_name is None:
                 display_name = pesticide["name"]
 
+        # Custom SMILES
         if mol.smiles:
             smiles = mol.smiles.strip()
 
         if not smiles:
-            raise HTTPException(status_code=400, detail="Each molecule needs pesticide_id or smiles.")
+            raise HTTPException(
+                status_code=400,
+                detail="Each molecule requires pesticide_id or smiles input.",
+            )
 
         if not display_name:
             display_name = "Unnamed molecule"
 
-        score_value, label = score_single_molecule(protein_seq, smiles)
+        # 1) Affinity Prediction
+        affinity_value, label = score_single_molecule(protein_seq, smiles)
 
+        # 2) SafetyScan – RDKit similarity to banned list
+        safety_hits = safety_scan(smiles)       # list of dicts
+
+        if safety_hits:
+            safety_flag = "⚠ Similar to hazardous or restricted chemicals"
+            safety_models = [SafetyMatch(name=h["name"], similarity=h["similarity"])
+                             for h in safety_hits]
+        else:
+            safety_flag = "No known toxicity matches detected"
+            safety_models = []
+
+        # 3) Assemble result
         interpretation = (
-            f"Predicted {label.lower()} binding to the protein sequence associated with {pest['name']}."
+            f"Predicted {label.lower()} binding to {pest['name']} protein target. "
+            "SafetyScan performed for banned/restricted pesticide similarity."
         )
 
         results.append(
             MoleculeResult(
                 name=display_name,
                 smiles=smiles,
-                score=score_value,
+                score=affinity_value,
                 label=label,
                 interpretation=interpretation,
+                safety_matches=safety_models,
+                safety_flag=safety_flag,
             )
         )
 

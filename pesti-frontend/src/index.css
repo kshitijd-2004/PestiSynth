@@ -384,9 +384,7 @@ body {
 }
 /* Report section */
 
-.report-section {
-  margin-top: 32px;
-}
+
 
 .report-status {
   margin-top: 12px;
@@ -394,13 +392,6 @@ body {
   color: #e5e7eb;
 }
 
-.report-results {
-  margin-top: 16px;
-  padding: 16px;
-  border-radius: 16px;
-  border: 1px solid rgba(148, 163, 184, 0.7);
-  background: radial-gradient(circle at top left, #020617, #020617 60%);
-}
 
 .report-header {
   display: flex;
@@ -565,5 +556,292 @@ body {
 @media (max-width: 640px) {
   .report-results {
     padding: 12px;
+  }
+}
+
+/* Report "page" layout */
+
+.report-layout {
+  padding-bottom: 32px;
+}
+
+.report-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.report-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.report-header-text h2 {
+  margin: 0;
+  font-size: 20px;
+  color: #e5e7eb;
+}
+
+.report-header-text p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+.secondary-button {
+  border-radius: 999px;
+  border: 1px solid rgba(148, 163, 184, 0.8);
+  padding: 6px 12px;
+  font-size: 13px;
+  background: rgba(15, 23, 42, 0.9);
+  color: #e5e7eb;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.secondary-button:hover {
+  border-color: #6366f1;
+}
+
+/* Report sections */
+
+.report-section {
+  margin-top: 8px;
+}
+
+.report-section-title {
+  margin: 0 0 6px;
+  font-size: 16px;
+  color: #e5e7eb;
+}
+
+.report-section-subtitle {
+  margin: 0 0 10px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Pest profile card */
+
+.report-pest-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(15, 23, 42, 0.96);
+  padding: 12px 14px;
+}
+
+.report-pest-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 999px;
+  background: radial-gradient(circle at top left, #22c55e40, #020617 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 18px;
+  color: #bbf7d0;
+}
+
+.report-pest-name {
+  font-size: 15px;
+  color: #e5e7eb;
+}
+
+.report-pest-subtitle {
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+/* Molecule list */
+
+.report-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.report-card {
+  border-radius: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(15, 23, 42, 0.96);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.report-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.report-rank {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.report-card-title {
+  margin: 0;
+  font-size: 14px;
+  color: #e5e7eb;
+  flex: 1;
+}
+
+.report-card-smiles {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.report-card-smiles code {
+  font-size: 11px;
+  background-color: rgba(15, 23, 42, 0.9);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.report-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.report-metrics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.metric {
+  min-width: 120px;
+}
+
+.metric-label {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.metric-value {
+  font-size: 14px;
+  font-weight: 500;
+  color: #e5e7eb;
+}
+
+.report-interpretation {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: #cbd5f5;
+}
+
+/* Affinity chart */
+
+.affinity-chart {
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(15, 23, 42, 0.96);
+  padding: 12px 14px 14px;
+}
+
+.affinity-chart-inner {
+  display: flex;
+  gap: 8px;
+  min-height: 200px;
+}
+
+.affinity-chart-y {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9ca3af;
+  padding-right: 6px;
+}
+
+.affinity-chart-bars {
+  flex: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding-bottom: 6px;
+}
+
+.affinity-chart-bar-wrapper {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.affinity-chart-bar {
+  width: 100%;
+  max-width: 40px;
+  height: 160px;
+  border-radius: 6px 6px 0 0;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(55, 65, 81, 0.9);
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+
+.affinity-chart-bar-fill {
+  width: 100%;
+  background: linear-gradient(to top, #4f46e5, #22c55e);
+  transition: height 0.2s ease-out;
+}
+
+.affinity-chart-x-label {
+  margin-top: 4px;
+  font-size: 10px;
+  color: #9ca3af;
+  text-align: center;
+  word-break: break-all;
+}
+
+.affinity-chart-axis-labels {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.axis-y-label {
+  opacity: 0.9;
+}
+
+.axis-x-label {
+  opacity: 0.9;
+}
+
+/* (chips stay as you already updated them) */
+
+@media (max-width: 640px) {
+  .report-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .affinity-chart-inner {
+    min-height: 180px;
+  }
+
+  .affinity-chart-bar {
+    max-width: 28px;
   }
 }
