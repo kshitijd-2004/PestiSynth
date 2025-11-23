@@ -9,7 +9,6 @@ import imgCottonBollworm from "./assets/pest_img/Cotton_Ballworm.png";
 import imgDiamondbackMoth from "./assets/pest_img/Diamondback_Moth.png";
 import imgRiceStemBorer from "./assets/pest_img/RiceStem_Borer.png";
 
-
 import imgAcetamiprid from "./assets/pesticide_img/Acetamiprid.png";
 import imgBifenthrin from "./assets/pesticide_img/Bifenthrin.png";
 import imgChlorpyrifos from "./assets/pesticide_img/Chlorpyrifos.png";
@@ -67,6 +66,9 @@ const PESTICIDE_IMAGE_MAP = {
 const VIEW_SELECTION = "selection";
 const VIEW_REPORT = "report";
 
+// max TOTAL molecules per run (library + custom)
+const MAX_MOLECULES = 5;
+
 function App() {
   const [pests, setPests] = useState([]);
   const [pesticides, setPesticides] = useState([]);
@@ -78,7 +80,11 @@ function App() {
   const [selectedPestId, setSelectedPestId] = useState(null);
   const [selectedPesticideIds, setSelectedPesticideIds] = useState([]);
 
-  const MAX_PESTICIDES = 5;
+  // custom SMILES
+  const [customMolecules, setCustomMolecules] = useState([]); // { id, name, smiles }
+  const [customInput, setCustomInput] = useState("");
+  const [customCounter, setCustomCounter] = useState(1);
+  const [fileImportMessage, setFileImportMessage] = useState("");
 
   const [scoreLoading, setScoreLoading] = useState(false);
   const [scoreError, setScoreError] = useState(null);
@@ -126,6 +132,9 @@ function App() {
     fetchPesticides();
   }, []);
 
+  const totalSelectedMolecules =
+    selectedPesticideIds.length + customMolecules.length;
+
   const handlePestSelect = (pestId) => {
     setSelectedPestId(pestId);
     setScoreResponse(null);
@@ -137,25 +146,123 @@ function App() {
     setScoreError(null);
 
     if (selectedPesticideIds.includes(pesticideId)) {
-      setSelectedPesticideIds((prev) => prev.filter((id) => id !== pesticideId));
+      setSelectedPesticideIds((prev) =>
+        prev.filter((id) => id !== pesticideId)
+      );
     } else {
-      if (selectedPesticideIds.length >= MAX_PESTICIDES) return;
+      const totalIfAdded = totalSelectedMolecules + 1;
+      if (totalIfAdded > MAX_MOLECULES) return;
       setSelectedPesticideIds((prev) => [...prev, pesticideId]);
     }
   };
 
+  const handleAddCustomSmiles = () => {
+    const trimmed = customInput.trim();
+    if (!trimmed) return;
+
+    if (totalSelectedMolecules >= MAX_MOLECULES) return;
+
+    const name = `Custom molecule ${customCounter}`;
+    const id = `custom-${customCounter}`;
+
+    setCustomMolecules((prev) => [...prev, { id, name, smiles: trimmed }]);
+    setCustomCounter((c) => c + 1);
+    setCustomInput("");
+    setScoreResponse(null);
+    setScoreError(null);
+  };
+
+  const handleRemoveCustom = (id) => {
+    setCustomMolecules((prev) => prev.filter((m) => m.id !== id));
+    setScoreResponse(null);
+    setScoreError(null);
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = String(e.target.result || "");
+      const rawTokens = text
+        .split(",")
+        .map((s) => s.trim())
+        .filter((s) => s.length > 0);
+
+      if (rawTokens.length === 0) {
+        setFileImportMessage("No valid SMILES found in file.");
+        return;
+      }
+
+      setCustomMolecules((prev) => {
+        let next = [...prev];
+        let added = 0;
+        let skipped = 0;
+        let counter = customCounter;
+
+        for (const smiles of rawTokens) {
+          const already =
+            next.some((m) => m.smiles === smiles) ||
+            selectedPesticideIds.length + next.length >= MAX_MOLECULES;
+
+          if (already) {
+            skipped += 1;
+            continue;
+          }
+
+          const name = `Custom molecule ${counter}`;
+          next.push({ id: `custom-${counter}`, name, smiles });
+          counter += 1;
+          added += 1;
+
+          if (selectedPesticideIds.length + next.length >= MAX_MOLECULES) {
+            break;
+          }
+        }
+
+        setCustomCounter(counter);
+
+        if (added === 0) {
+          setFileImportMessage(
+            "No additional SMILES added (duplicates or limit reached)."
+          );
+        } else {
+          let msg = `Added ${added} custom molecule${
+            added > 1 ? "s" : ""
+          } from file.`;
+          if (skipped > 0) {
+            msg += ` Skipped ${skipped} (duplicates or beyond limit).`;
+          }
+          setFileImportMessage(msg);
+        }
+
+        return next;
+      });
+    };
+
+    reader.readAsText(file);
+  };
+
   const handleRunScoring = async () => {
-    if (!selectedPestId || selectedPesticideIds.length === 0) return;
+    if (!selectedPestId || totalSelectedMolecules === 0) return;
 
     setScoreLoading(true);
     setScoreError(null);
 
     try {
+      const pesticideMolecules = selectedPesticideIds.map((id) => ({
+        pesticide_id: id,
+      }));
+
+      const customInputs = customMolecules.map((m) => ({
+        name: m.name,
+        smiles: m.smiles,
+      }));
+
       const payload = {
         pest_id: selectedPestId,
-        molecules: selectedPesticideIds.map((id) => ({
-          pesticide_id: id,
-        })),
+        molecules: [...pesticideMolecules, ...customInputs],
       };
 
       const res = await fetch(`${API_BASE_URL}/score/batch`, {
@@ -234,8 +341,8 @@ function App() {
                 <div>
                   <h2>Selection Overview</h2>
                   <p>
-                    Choose a target pest and up to {MAX_PESTICIDES} library
-                    molecules to evaluate.
+                    Choose a target pest and up to {MAX_MOLECULES} molecules
+                    (library or custom SMILES) to evaluate.
                   </p>
                 </div>
 
@@ -250,7 +357,7 @@ function App() {
                   <div className="summary-pill">
                     <span className="summary-label">Selected Molecules</span>
                     <span className="summary-value">
-                      {selectedPesticideIds.length} / {MAX_PESTICIDES}
+                      {totalSelectedMolecules} / {MAX_MOLECULES}
                     </span>
                   </div>
                 </div>
@@ -300,8 +407,8 @@ function App() {
               <div className="section-header">
                 <h2>2. Choose Molecules from Library</h2>
                 <p>
-                  Pick up to {MAX_PESTICIDES} pesticides from your predefined
-                  library.
+                  Pick molecules from your predefined pesticide library. You can
+                  combine these with custom SMILES below.
                 </p>
               </div>
 
@@ -341,17 +448,107 @@ function App() {
                       disabled={!selectedPestId}
                       onToggle={() => handlePesticideToggle(p.id)}
                       maxReached={
-                        selectedPesticideIds.length >= MAX_PESTICIDES &&
+                        totalSelectedMolecules >= MAX_MOLECULES &&
                         !selectedPesticideIds.includes(p.id)
                       }
                     />
                   ))}
                 </div>
               )}
+            </section>
 
-              {selectedPesticideIds.length >= MAX_PESTICIDES && (
-                <p className="limit-hint">
-                  You’ve reached the maximum of {MAX_PESTICIDES} molecules per run.
+            {/* Custom SMILES input */}
+            <section className="section">
+              <div className="section-header">
+                <h2>3. Add Custom SMILES (optional)</h2>
+                <p>
+                  Include novel molecules by typing a SMILES string or importing
+                  a comma-separated list from a .txt file.
+                </p>
+              </div>
+
+              <div className="custom-card">
+                <div className="custom-input-row">
+                  <input
+                    type="text"
+                    className="custom-input"
+                    placeholder="e.g. CCOP(=S)(OCC)OC1=CC=C(C=C1)[N+](=O)[O-]"
+                    value={customInput}
+                    onChange={(e) => setCustomInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleAddCustomSmiles();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="secondary-button custom-add-button"
+                    onClick={handleAddCustomSmiles}
+                    disabled={
+                      !customInput.trim() ||
+                      totalSelectedMolecules >= MAX_MOLECULES
+                    }
+                  >
+                    Add
+                  </button>
+                </div>
+
+                <div className="custom-file-row">
+                  <label className="custom-file-label">
+                    <span className="custom-file-title">
+                      Upload SMILES from .txt
+                    </span>
+                    <span className="custom-file-subtitle">
+                      Use comma-separated SMILES. We’ll import up to{" "}
+                      {MAX_MOLECULES - selectedPesticideIds.length} additional
+                      molecules.
+                    </span>
+                    <input
+                      type="file"
+                      accept=".txt"
+                      onChange={handleFileUpload}
+                    />
+                  </label>
+                </div>
+
+                {fileImportMessage && (
+                  <p className="custom-file-message">{fileImportMessage}</p>
+                )}
+
+                {customMolecules.length > 0 && (
+                  <div className="custom-list">
+                    {customMolecules.map((m) => (
+                      <div key={m.id} className="custom-chip">
+                        <div className="custom-chip-main">
+                          <span className="custom-chip-name">{m.name}</span>
+                          <code className="custom-chip-smiles">
+                            {m.smiles}
+                          </code>
+                        </div>
+                        <button
+                          type="button"
+                          className="custom-chip-remove"
+                          onClick={() => handleRemoveCustom(m.id)}
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                <p className="custom-limit-note">
+                  Total molecules this run:{" "}
+                  <strong>{totalSelectedMolecules}</strong> / {MAX_MOLECULES}
+                </p>
+              </div>
+
+              {totalSelectedMolecules >= MAX_MOLECULES && (
+                <p className="limit-hint" style={{ marginTop: "10px" }}>
+                  You’ve reached the maximum of {MAX_MOLECULES} molecules per
+                  run (library + custom).
                 </p>
               )}
 
@@ -377,14 +574,14 @@ function App() {
                     {selectedPest ? selectedPest.name : "None selected"}
                   </strong>{" "}
                   · Molecules:{" "}
-                  <strong>{selectedPesticideIds.length}</strong>
+                  <strong>{totalSelectedMolecules}</strong>
                 </div>
               </div>
               <button
                 className="primary-button"
                 disabled={
                   !selectedPestId ||
-                  selectedPesticideIds.length === 0 ||
+                  totalSelectedMolecules === 0 ||
                   scoreLoading
                 }
                 onClick={handleRunScoring}
@@ -403,6 +600,7 @@ function App() {
             onBack={handleBackToSelection}
             pest={selectedPest}
             pesticideMetas={selectedPesticideMetas}
+            customMolecules={customMolecules}
           />
         </main>
       )}
@@ -488,13 +686,26 @@ function PesticideCard({
 
 /* ---------- Report view (new page) ---------- */
 
-function ReportView({ scoreResponse, onBack, pest, pesticideMetas }) {
+function ReportView({
+  scoreResponse,
+  onBack,
+  pest,
+  pesticideMetas,
+  customMolecules,
+}) {
   const pestName = pest?.name || scoreResponse.pest;
   const pestImgSrc = pest ? PEST_IMAGE_MAP[pest.id] : null;
 
+  // Build metadata array in the same order as payload:
+  // first library pesticides, then custom molecules
+  const allMeta = [
+    ...pesticideMetas.map((meta) => ({ type: "library", meta })),
+    ...customMolecules.map((cm) => ({ type: "custom", meta: cm })),
+  ];
+
   const paired = scoreResponse.results.map((res, idx) => ({
     result: res,
-    meta: pesticideMetas[idx] || null,
+    context: allMeta[idx] || { type: "unknown", meta: null },
   }));
 
   const sorted = [...paired].sort(
@@ -526,7 +737,11 @@ function ReportView({ scoreResponse, onBack, pest, pesticideMetas }) {
         <div className="report-hero">
           <div className="report-hero-image-wrapper">
             {pestImgSrc ? (
-              <img src={pestImgSrc} alt={pestName} className="report-hero-image" />
+              <img
+                src={pestImgSrc}
+                alt={pestName}
+                className="report-hero-image"
+              />
             ) : (
               <div className="report-hero-image-placeholder">
                 <span>{pestName.charAt(0).toUpperCase()}</span>
@@ -543,13 +758,17 @@ function ReportView({ scoreResponse, onBack, pest, pesticideMetas }) {
 
             <div className="report-hero-meta-row">
               <div className="report-hero-meta">
-                <span className="report-hero-meta-label">Molecules evaluated</span>
+                <span className="report-hero-meta-label">
+                  Molecules evaluated
+                </span>
                 <span className="report-hero-meta-value">
                   {sorted.length}
                 </span>
               </div>
               <div className="report-hero-meta">
-                <span className="report-hero-meta-label">Best affinity (µM)</span>
+                <span className="report-hero-meta-label">
+                  Best affinity (µM)
+                </span>
                 <span className="report-hero-meta-value">
                   {sorted.length > 0
                     ? Number(sorted[0].result.score).toFixed(4)
@@ -557,7 +776,9 @@ function ReportView({ scoreResponse, onBack, pest, pesticideMetas }) {
                 </span>
               </div>
               <div className="report-hero-meta">
-                <span className="report-hero-meta-label">Worst affinity (µM)</span>
+                <span className="report-hero-meta-label">
+                  Worst affinity (µM)
+                </span>
                 <span className="report-hero-meta-value">
                   {sorted.length > 0
                     ? Number(sorted[sorted.length - 1].result.score).toFixed(4)
@@ -577,8 +798,7 @@ function ReportView({ scoreResponse, onBack, pest, pesticideMetas }) {
               Molecule profiles (ranked best to worst)
             </h3>
             <p className="report-section-subtitle">
-              Each profile combines the library pesticide information with PLAPT
-              affinity predictions.
+              Lower affinity values (µM) indicate stronger binding for this model.
             </p>
 
             <div className="report-list">
@@ -608,10 +828,19 @@ function ReportView({ scoreResponse, onBack, pest, pesticideMetas }) {
 }
 
 function ReportCard({ pair, rank }) {
-  const { result, meta } = pair;
-  const { name, smiles, score, label, interpretation } = result;
+  const { result, context } = pair;
+  const meta = context?.meta;
+  const isCustom = context?.type === "custom";
 
-  const imgSrc = meta ? PESTICIDE_IMAGE_MAP[meta.id] : null;
+  const displayName =
+    result.name || meta?.name || (isCustom ? "Custom molecule" : "Unnamed");
+
+  const displaySmiles = result.smiles || meta?.smiles || "—";
+
+  const imgSrc =
+    !isCustom && meta && meta.id ? PESTICIDE_IMAGE_MAP[meta.id] : null;
+
+  const { score, label, interpretation } = result;
 
   const labelColorClass =
     label === "High"
@@ -625,10 +854,10 @@ function ReportCard({ pair, rank }) {
       <div className="report-card-main">
         <div className="report-card-image-wrapper">
           {imgSrc ? (
-            <img src={imgSrc} alt={name} className="report-card-image" />
+            <img src={imgSrc} alt={displayName} className="report-card-image" />
           ) : (
             <div className="report-card-image-placeholder">
-              <span>{name.charAt(0).toUpperCase()}</span>
+              <span>{displayName.charAt(0).toUpperCase()}</span>
             </div>
           )}
         </div>
@@ -637,12 +866,12 @@ function ReportCard({ pair, rank }) {
           <div className="report-card-header">
             <div className="report-card-title-row">
               <span className="report-rank">#{rank}</span>
-              <h4 className="report-card-title">{name}</h4>
+              <h4 className="report-card-title">{displayName}</h4>
               <span className={`chip ${labelColorClass}`}>{label} affinity</span>
             </div>
             <div className="report-card-smiles">
               <span>SMILES: </span>
-              <code>{smiles}</code>
+              <code>{displaySmiles}</code>
             </div>
           </div>
 
@@ -686,7 +915,7 @@ function BarChartAffinity({ pairs, maxScore }) {
 
               // Keep very small affinities visible with a minimum height
               const rawPct = (scoreNum / safeMax) * 100;
-              const heightPct = Math.max(rawPct, 3);
+              const heightPct = Math.max((safeMax - scoreNum) / safeMax * 100, 3);
 
               const label = result.name || result.smiles;
 

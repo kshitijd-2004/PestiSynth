@@ -242,8 +242,6 @@ body {
   }
 }
 
-
-
 .card-grid-disabled {
   opacity: 0.7;
   pointer-events: none;
@@ -438,9 +436,8 @@ body {
 }
 
 .chip-high {
- 
-  border: 1px solid rgba(248, 113, 113, 0.9);
-  color: rgba(248, 113, 113, 0.9);
+  border: 1px solid rgba(74, 222, 128, 0.9);
+  color: rgba(74, 222, 128, 0.9);
 }
 
 .chip-medium {
@@ -449,13 +446,167 @@ body {
 }
 
 .chip-low {
-   border: 1px solid rgba(74, 222, 128, 0.9);
-  color: rgba(74, 222, 128, 0.9);
+  
+  border: 1px solid rgba(248, 113, 113, 0.9);
+  color: rgba(248, 113, 113, 0.9);
 }
 
 .chip-safety {
   border: 1px solid rgba(248, 113, 113, 0.9);
   color: rgba(248, 113, 113, 0.9);
+}
+
+/* --- Custom SMILES panel --- */
+
+.custom-card {
+  margin-top: 12px;
+  padding: 14px 16px 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(15, 23, 42, 0.95);
+  color: #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.custom-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.custom-input {
+  flex: 1;
+  padding: 8px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  background: rgba(15, 23, 42, 0.98);
+  color: #e5e7eb;
+  font-size: 13px;
+  outline: none;
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+}
+
+.custom-input::placeholder {
+  color: rgba(148, 163, 184, 0.6);
+}
+
+.custom-input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.45);
+}
+
+.custom-add-button {
+  white-space: nowrap;
+}
+
+.custom-helper {
+  margin: 0;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* File upload */
+
+.custom-file-row {
+  margin-top: 4px;
+}
+
+.custom-file-label {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 1px dashed rgba(148, 163, 184, 0.8);
+  background: rgba(15, 23, 42, 0.9);
+  font-size: 12px;
+  color: #cbd5f5;
+  cursor: pointer;
+  max-width: 360px;
+}
+
+.custom-file-label input[type="file"] {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.custom-file-title {
+  font-weight: 500;
+}
+
+.custom-file-subtitle {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+.custom-file-message {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: #a5b4fc;
+}
+
+/* Custom molecules list */
+
+.custom-list {
+  margin-top: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.custom-chip {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.7);
+}
+
+.custom-chip-main {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.custom-chip-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #e5e7eb;
+}
+
+.custom-chip-smiles {
+  font-size: 11px;
+  background: rgba(15, 23, 42, 0.98);
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+
+.custom-chip-remove {
+  border: none;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px;
+}
+
+.custom-chip-remove:hover {
+  color: #fca5a5;
+}
+
+.custom-limit-note {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #9ca3af;
 }
 
 /* Report layout */
@@ -841,6 +992,14 @@ body {
   font-size: 10px;
   color: #9ca3af;
   word-break: break-word;
+}
+
+.affinity-chart-note {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #9ca3af;
+  text-align: right; /* or left/center if you prefer */
+  opacity: 0.9;
 }
 
 /* Axis titles */
