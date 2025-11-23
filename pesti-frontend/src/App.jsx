@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import imgFallArmyworm from "./assets/pest_img/Fall_Armyworm.png";
 import imgAphids from "./assets/pest_img/Aphids.png";
 import imgColoradoPotatoBeetle from "./assets/pest_img/Colorado_potato_Beetle.png";
-import imgBrownPlanthopper from "./assets/pest_img/Brown_Planthopper.png";
+import imgBrownPlanthopper from "./assets/pest_img/Brown_planthopper.png";
 import imgMosquitoLarvae from "./assets/pest_img/Mosquito_Larvae.png";
 import imgCottonBollworm from "./assets/pest_img/Cotton_Ballworm.png";
 import imgDiamondbackMoth from "./assets/pest_img/Diamondback_Moth.png";
