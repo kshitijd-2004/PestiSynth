@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 const API_BASE_URL = "http://localhost:8000"; // <-- change if needed
 
 // Optional: map pest/pesticide IDs to image URLs
-// Replace these with your real images when you have them.
 const PEST_IMAGE_MAP = {
   // fall_armyworm: "/images/pests/fall_armyworm.jpg",
   // mosquito_larvae: "/images/pests/mosquito_larvae.jpg",
@@ -27,6 +26,11 @@ function App() {
   const [selectedPesticideIds, setSelectedPesticideIds] = useState([]);
 
   const MAX_PESTICIDES = 5;
+
+  // Score /report state
+  const [scoreLoading, setScoreLoading] = useState(false);
+  const [scoreError, setScoreError] = useState(null);
+  const [scoreResponse, setScoreResponse] = useState(null);
 
   useEffect(() => {
     // Fetch pests
@@ -71,9 +75,15 @@ function App() {
 
   const handlePestSelect = (pestId) => {
     setSelectedPestId(pestId);
+    // Clear previous results when pest changes
+    setScoreResponse(null);
+    setScoreError(null);
   };
 
   const handlePesticideToggle = (pesticideId) => {
+    setScoreResponse(null);
+    setScoreError(null);
+
     if (selectedPesticideIds.includes(pesticideId)) {
       setSelectedPesticideIds((prev) =>
         prev.filter((id) => id !== pesticideId)
@@ -81,6 +91,50 @@ function App() {
     } else {
       if (selectedPesticideIds.length >= MAX_PESTICIDES) return;
       setSelectedPesticideIds((prev) => [...prev, pesticideId]);
+    }
+  };
+
+  const handleRunScoring = async () => {
+    if (!selectedPestId || selectedPesticideIds.length === 0) return;
+
+    setScoreLoading(true);
+    setScoreError(null);
+    setScoreResponse(null);
+
+    try {
+      const payload = {
+        pest_id: selectedPestId,
+        molecules: selectedPesticideIds.map((id) => ({
+          pesticide_id: id,
+        })),
+      };
+
+      const res = await fetch(`${API_BASE_URL}/score/batch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        let message = `Scoring request failed (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData?.detail) message = errData.detail;
+        } catch (_) {
+          // ignore JSON parse error
+        }
+        throw new Error(message);
+      }
+
+      const data = await res.json();
+      setScoreResponse(data);
+    } catch (err) {
+      console.error(err);
+      setScoreError(err.message || "Failed to run scoring.");
+    } finally {
+      setScoreLoading(false);
     }
   };
 
@@ -207,38 +261,75 @@ function App() {
           )}
         </section>
 
-        {/* Placeholder footer action (future: call /score/batch) */}
-        <section className="bottom-bar">
-          <div className="bottom-bar-inner">
-            <div>
-              <div className="bottom-bar-title">Ready for affinity analysis</div>
-              <div className="bottom-bar-subtitle">
-                Pest:{" "}
-                <strong>
-                  {selectedPest ? selectedPest.name : "None selected"}
-                </strong>{" "}
-                · Molecules:{" "}
-                <strong>{selectedPesticideIds.length}</strong>
+        {/* Affinity & Safety Report Section */}
+        <section className="section report-section">
+          <div className="section-header">
+            <h2>3. Affinity & Safety Report</h2>
+            <p>
+              Run the PLAPT model to generate affinity scores, qualitative labels,
+              and a SafetyScan summary for each selected molecule.
+            </p>
+          </div>
+
+          {scoreLoading && (
+            <div className="report-status">Running analysis…</div>
+          )}
+
+          {scoreError && (
+            <div className="error-banner" style={{ marginTop: "12px" }}>
+              <span>⚠</span>
+              <span>{scoreError}</span>
+            </div>
+          )}
+
+          {scoreResponse && (
+            <div className="report-results">
+              <div className="report-header">
+                <div>
+                  <div className="report-title">
+                    Target: {scoreResponse.pest}
+                  </div>
+                  <div className="report-subtitle">
+                    {scoreResponse.results.length} molecule
+                    {scoreResponse.results.length !== 1 ? "s" : ""} evaluated.
+                  </div>
+                </div>
+              </div>
+
+              <div className="report-grid">
+                {scoreResponse.results.map((res) => (
+                  <ReportCard key={res.name + res.smiles} result={res} />
+                ))}
               </div>
             </div>
-            <button
-              className="primary-button"
-              disabled={!selectedPestId || selectedPesticideIds.length === 0}
-              onClick={() => {
-                // This is where you’ll later hook in /score/batch
-                // For now, we just log to verify the selections.
-                console.log("Selected pest:", selectedPestId);
-                console.log("Selected pesticide IDs:", selectedPesticideIds);
-                alert(
-                  "Selections captured. Next step: hook this button up to /score/batch."
-                );
-              }}
-            >
-              Continue to Affinity Report
-            </button>
-          </div>
+          )}
         </section>
       </main>
+
+      {/* Bottom bar action */}
+      <section className="bottom-bar">
+        <div className="bottom-bar-inner">
+          <div>
+            <div className="bottom-bar-title">Ready for affinity analysis</div>
+            <div className="bottom-bar-subtitle">
+              Pest:{" "}
+              <strong>{selectedPest ? selectedPest.name : "None selected"}</strong>{" "}
+              · Molecules: <strong>{selectedPesticideIds.length}</strong>
+            </div>
+          </div>
+          <button
+            className="primary-button"
+            disabled={
+              !selectedPestId ||
+              selectedPesticideIds.length === 0 ||
+              scoreLoading
+            }
+            onClick={handleRunScoring}
+          >
+            {scoreLoading ? "Running analysis…" : "Run Affinity + Safety Scan"}
+          </button>
+        </div>
+      </section>
     </div>
   );
 }
@@ -314,6 +405,67 @@ function PesticideCard({
         </div>
       </div>
     </button>
+  );
+}
+
+function ReportCard({ result }) {
+  const { name, smiles, score, label, interpretation, safety_flag, safety_matches } =
+    result;
+
+  const labelColorClass =
+    label === "High"
+      ? "chip-high"
+      : label === "Medium"
+      ? "chip-medium"
+      : "chip-low";
+
+  return (
+    <div className="report-card">
+      <div className="report-card-header">
+        <div className="report-card-title-row">
+          <h3 className="report-card-title">{name}</h3>
+          <span className={`chip ${labelColorClass}`}>{label} affinity</span>
+        </div>
+        <div className="report-card-smiles">
+          <span>SMILES: </span>
+          <code>{smiles}</code>
+        </div>
+      </div>
+
+      <div className="report-card-body">
+        <div className="report-metrics">
+          <div className="metric">
+            <div className="metric-label">Predicted affinity (µM)</div>
+            <div className="metric-value">
+              {typeof score === "number" ? score.toFixed(4) : score}
+            </div>
+          </div>
+          <div className="metric">
+            <div className="metric-label">Safety flag</div>
+            <div className="metric-value metric-value-secondary">
+              {safety_flag}
+            </div>
+          </div>
+        </div>
+
+        <p className="report-interpretation">{interpretation}</p>
+
+        {safety_matches && safety_matches.length > 0 && (
+          <div className="report-safety-matches">
+            <div className="safety-matches-title">
+              Similar to hazardous/restricted:
+            </div>
+            <div className="safety-matches-list">
+              {safety_matches.map((m) => (
+                <span key={m.name} className="chip chip-safety">
+                  {m.name} · sim {m.similarity.toFixed(2)}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
