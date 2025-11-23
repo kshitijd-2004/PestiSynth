@@ -56,7 +56,8 @@ function App() {
       try {
         setPesticidesLoading(true);
         const res = await fetch(`${API_BASE_URL}/pesticides`);
-        if (!res.ok) throw new Error(`Failed to fetch pesticides: ${res.status}`);
+        if (!res.ok)
+          throw new Error(`Failed to fetch pesticides: ${res.status}`);
         const data = await res.json();
         setPesticides(data);
       } catch (err) {
@@ -133,7 +134,11 @@ function App() {
     setView(VIEW_SELECTION);
   };
 
-  const selectedPest = pests.find((p) => p.id === selectedPestId);
+  const selectedPest = pests.find((p) => p.id === selectedPestId) || null;
+
+  // For the report view, we want pesticide metadata aligned with request order
+  const selectedPesticideMetas = selectedPesticideIds
+    .map((id) => pesticides.find((p) => p.id === id) || null);
 
   return (
     <div className="app">
@@ -190,8 +195,8 @@ function App() {
               <div className="section-header">
                 <h2>1. Choose a Target Pest</h2>
                 <p>
-                  Select the pest whose protein you want to evaluate. Only one pest
-                  can be active at a time.
+                  Select the pest whose protein you want to evaluate. Only one
+                  pest can be active at a time.
                 </p>
               </div>
 
@@ -303,6 +308,8 @@ function App() {
           <ReportView
             scoreResponse={scoreResponse}
             onBack={handleBackToSelection}
+            pest={selectedPest}
+            pesticideMetas={selectedPesticideMetas}
           />
         </main>
       )}
@@ -310,7 +317,7 @@ function App() {
   );
 }
 
-/* ---------- Cards ---------- */
+/* ---------- Selection view cards ---------- */
 
 function PestCard({ pest, isSelected, onSelect }) {
   const imgSrc = PEST_IMAGE_MAP[pest.id];
@@ -386,15 +393,27 @@ function PesticideCard({
   );
 }
 
-/* ---------- Report View (new page) ---------- */
+/* ---------- Report view (new page) ---------- */
 
-function ReportView({ scoreResponse, onBack }) {
-  const { pest, results } = scoreResponse;
+function ReportView({ scoreResponse, onBack, pest, pesticideMetas }) {
+  const pestName = pest?.name || scoreResponse.pest;
+  const pestImgSrc = pest ? PEST_IMAGE_MAP[pest.id] : null;
 
-  // Sort: best (lowest affinity µM) to worst
-  const sorted = [...results].sort((a, b) => a.score - b.score);
+  // Pair each result with the pesticide metadata in request order
+  const paired = scoreResponse.results.map((res, idx) => ({
+    result: res,
+    meta: pesticideMetas[idx] || null,
+  }));
+
+  // Sort by score (best to worst) but keep meta attached
+  const sorted = [...paired].sort(
+    (a, b) => Number(a.result.score) - Number(b.result.score)
+  );
+
   const maxScore =
-    sorted.length > 0 ? Math.max(...sorted.map((r) => Number(r.score))) : 0;
+    sorted.length > 0
+      ? Math.max(...sorted.map((p) => Number(p.result.score)))
+      : 0;
 
   return (
     <div className="report-page">
@@ -405,64 +424,102 @@ function ReportView({ scoreResponse, onBack }) {
         <div className="report-header-text">
           <h2>Affinity & Safety Report</h2>
           <p>
-            Target pest: <strong>{pest}</strong> ·{" "}
+            Target pest: <strong>{pestName}</strong> ·{" "}
             {sorted.length} molecule{sorted.length !== 1 ? "s" : ""} evaluated
           </p>
         </div>
       </div>
 
-      {/* 1) Pest profile */}
-      <section className="section report-section">
-        <h3 className="report-section-title">1. Target pest profile</h3>
-        <div className="report-pest-card">
-          <div className="report-pest-icon">
-            <span>{pest.charAt(0).toUpperCase()}</span>
+      {/* Hero pest profile */}
+      <section className="report-section">
+        <div className="report-hero">
+          <div className="report-hero-image-wrapper">
+            {pestImgSrc ? (
+              <img src={pestImgSrc} alt={pestName} className="report-hero-image" />
+            ) : (
+              <div className="report-hero-image-placeholder">
+                <span>{pestName.charAt(0).toUpperCase()}</span>
+              </div>
+            )}
           </div>
-          <div>
-            <div className="report-pest-name">{pest}</div>
-            <div className="report-pest-subtitle">
-              Protein affinity predictions generated using PLAPT.
+
+          <div className="report-hero-content">
+            <h3 className="report-hero-title">{pestName}</h3>
+            <p className="report-hero-subtitle">
+              Protein affinity profile generated using PLAPT, based on the
+              selected candidate molecules.
+            </p>
+
+            <div className="report-hero-meta-row">
+              <div className="report-hero-meta">
+                <span className="report-hero-meta-label">Molecules evaluated</span>
+                <span className="report-hero-meta-value">
+                  {sorted.length}
+                </span>
+              </div>
+              <div className="report-hero-meta">
+                <span className="report-hero-meta-label">Best affinity (µM)</span>
+                <span className="report-hero-meta-value">
+                  {sorted.length > 0
+                    ? Number(sorted[0].result.score).toFixed(4)
+                    : "—"}
+                </span>
+              </div>
+              <div className="report-hero-meta">
+                <span className="report-hero-meta-label">Worst affinity (µM)</span>
+                <span className="report-hero-meta-value">
+                  {sorted.length > 0
+                    ? Number(sorted[sorted.length - 1].result.score).toFixed(4)
+                    : "—"}
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2) SMILES profiles sorted best→worst */}
-      <section className="section report-section">
-        <h3 className="report-section-title">
-          2. Molecules ranked by predicted affinity
-        </h3>
-        <p className="report-section-subtitle">
-          Lower affinity values (µM) indicate stronger binding for this model.
-        </p>
+      {/* Two-column layout: molecules + chart */}
+      <section className="report-section">
+        <div className="report-two-column">
+          <div className="report-column">
+            <h3 className="report-section-title">
+              Molecule profiles (ranked best to worst)
+            </h3>
+            <p className="report-section-subtitle">
+              Lower affinity values (µM) indicate stronger binding for this model.
+            </p>
 
-        <div className="report-list">
-          {sorted.map((res, idx) => (
-            <ReportCard key={res.name + res.smiles + idx} result={res} rank={idx + 1} />
-          ))}
+            <div className="report-list">
+              {sorted.map((pair, idx) => (
+                <ReportCard key={pair.result.name + idx} pair={pair} rank={idx + 1} />
+              ))}
+            </div>
+          </div>
+
+          {sorted.length > 1 && (
+            <div className="report-column report-column-chart">
+              <h3 className="report-section-title">
+                Affinity comparison chart
+              </h3>
+              <p className="report-section-subtitle">
+                Bar height represents predicted affinity in µM (0 to max across
+                selected molecules).
+              </p>
+
+              <BarChartAffinity pairs={sorted} maxScore={maxScore} />
+            </div>
+          )}
         </div>
       </section>
-
-      {/* 3) Bar graph: affinities vs pest */}
-      {sorted.length > 1 && (
-        <section className="section report-section">
-          <h3 className="report-section-title">
-            3. Affinity comparison chart
-          </h3>
-          <p className="report-section-subtitle">
-            Bar height represents predicted affinity in µM (0 to max across
-            selected molecules).
-          </p>
-
-          <BarChartAffinity results={sorted} maxScore={maxScore} />
-        </section>
-      )}
     </div>
   );
 }
 
-function ReportCard({ result, rank }) {
+function ReportCard({ pair, rank }) {
+  const { result, meta } = pair;
   const { name, smiles, score, label, interpretation } = result;
+
+  const imgSrc = meta ? PESTICIDE_IMAGE_MAP[meta.id] : null;
 
   const labelColorClass =
     label === "High"
@@ -473,29 +530,45 @@ function ReportCard({ result, rank }) {
 
   return (
     <div className="report-card">
-      <div className="report-card-header">
-        <div className="report-card-title-row">
-          <span className="report-rank">#{rank}</span>
-          <h4 className="report-card-title">{name}</h4>
-          <span className={`chip ${labelColorClass}`}>{label} affinity</span>
+      <div className="report-card-main">
+        <div className="report-card-image-wrapper">
+          {imgSrc ? (
+            <img
+              src={imgSrc}
+              alt={name}
+              className="report-card-image"
+            />
+          ) : (
+            <div className="report-card-image-placeholder">
+              <span>{name.charAt(0).toUpperCase()}</span>
+            </div>
+          )}
         </div>
-        <div className="report-card-smiles">
-          <span>SMILES: </span>
-          <code>{smiles}</code>
-        </div>
-      </div>
 
-      <div className="report-card-body">
-        <div className="report-metrics">
-          <div className="metric">
-            <div className="metric-label">Predicted affinity (µM)</div>
-            <div className="metric-value">
-              {typeof score === "number" ? score.toFixed(4) : score}
+        <div className="report-card-body">
+          <div className="report-card-header">
+            <div className="report-card-title-row">
+              <span className="report-rank">#{rank}</span>
+              <h4 className="report-card-title">{name}</h4>
+              <span className={`chip ${labelColorClass}`}>{label} affinity</span>
+            </div>
+            <div className="report-card-smiles">
+              <span>SMILES: </span>
+              <code>{smiles}</code>
             </div>
           </div>
-        </div>
 
-        <p className="report-interpretation">{interpretation}</p>
+          <div className="report-metrics">
+            <div className="metric">
+              <div className="metric-label">Predicted affinity (µM)</div>
+              <div className="metric-value">
+                {typeof score === "number" ? score.toFixed(4) : score}
+              </div>
+            </div>
+          </div>
+
+          <p className="report-interpretation">{interpretation}</p>
+        </div>
       </div>
     </div>
   );
@@ -503,7 +576,7 @@ function ReportCard({ result, rank }) {
 
 /* ---------- Simple bar chart (CSS-only) ---------- */
 
-function BarChartAffinity({ results, maxScore }) {
+function BarChartAffinity({ pairs, maxScore }) {
   const safeMax = maxScore || 1;
 
   return (
@@ -515,24 +588,28 @@ function BarChartAffinity({ results, maxScore }) {
         </div>
 
         <div className="affinity-chart-bars">
-          {results.map((res) => {
-            const heightPct = (Number(res.score) / safeMax) * 100;
+          {pairs.map(({ result }) => {
+            const scoreNum = Number(result.score);
+            const heightPct = (scoreNum / safeMax) * 100;
             const shortSmiles =
-              res.smiles.length > 16
-                ? res.smiles.slice(0, 15) + "…"
-                : res.smiles;
+              result.smiles.length > 16
+                ? result.smiles.slice(0, 15) + "…"
+                : result.smiles;
 
             return (
-              <div className="affinity-chart-bar-wrapper" key={res.name + res.smiles}>
+              <div
+                className="affinity-chart-bar-wrapper"
+                key={result.name + result.smiles}
+              >
                 <div className="affinity-chart-bar">
                   <div
                     className="affinity-chart-bar-fill"
                     style={{ height: `${heightPct}%` }}
-                    title={`${res.name} – ${res.score.toFixed(4)} µM`}
+                    title={`${result.name} – ${scoreNum.toFixed(4)} µM`}
                   />
                 </div>
                 <div className="affinity-chart-x-label">
-                  <span title={res.smiles}>{shortSmiles}</span>
+                  <span title={result.smiles}>{shortSmiles}</span>
                 </div>
               </div>
             );

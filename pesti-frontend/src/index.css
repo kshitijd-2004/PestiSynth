@@ -576,7 +576,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .report-header-text h2 {
@@ -626,42 +626,111 @@ body {
   color: #9ca3af;
 }
 
-/* Pest profile card */
+/* Pest hero profile */
 
-.report-pest-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  border-radius: 16px;
+.report-hero {
+  display: grid;
+  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  gap: 16px;
+  border-radius: 18px;
   border: 1px solid rgba(148, 163, 184, 0.7);
-  background: rgba(15, 23, 42, 0.96);
-  padding: 12px 14px;
+  padding: 16px;
+  background: radial-gradient(circle at top left, #1e293b, #020617 70%);
 }
 
-.report-pest-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  background: radial-gradient(circle at top left, #22c55e40, #020617 70%);
+.report-hero-image-wrapper {
+  border-radius: 14px;
+  overflow: hidden;
+  background: radial-gradient(circle at top left, #0f172a, #020617 70%);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 600;
-  font-size: 18px;
-  color: #bbf7d0;
 }
 
-.report-pest-name {
-  font-size: 15px;
+.report-hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.report-hero-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: 700;
   color: #e5e7eb;
 }
 
-.report-pest-subtitle {
-  font-size: 12px;
+.report-hero-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.report-hero-title {
+  margin: 0;
+  font-size: 22px;
+  color: #e5e7eb;
+}
+
+.report-hero-subtitle {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #cbd5f5;
+}
+
+.report-hero-meta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.report-hero-meta {
+  min-width: 120px;
+  padding: 8px 10px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(148, 163, 184, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.report-hero-meta-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: #9ca3af;
 }
 
-/* Molecule list */
+.report-hero-meta-value {
+  font-size: 14px;
+  color: #e5e7eb;
+}
+
+/* Two-column layout below hero */
+
+.report-two-column {
+  display: grid;
+  grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+  gap: 16px;
+}
+
+.report-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.report-column-chart {
+  align-self: flex-start;
+}
+
+/* Molecule profiles */
 
 .report-list {
   display: flex;
@@ -673,10 +742,47 @@ body {
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.7);
   background: rgba(15, 23, 42, 0.96);
-  padding: 10px 12px;
+  padding: 8px 10px;
+}
+
+.report-card-main {
+  display: grid;
+  grid-template-columns: 60px minmax(0, 1fr);
+  gap: 10px;
+}
+
+.report-card-image-wrapper {
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: radial-gradient(circle at top left, #1f2937, #020617 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.report-card-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.report-card-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  color: #e5e7eb;
+}
+
+.report-card-body {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 
 .report-card-header {
@@ -713,12 +819,6 @@ body {
   background-color: rgba(15, 23, 42, 0.9);
   padding: 2px 4px;
   border-radius: 4px;
-}
-
-.report-card-body {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
 }
 
 .report-metrics {
@@ -821,15 +921,33 @@ body {
   color: #9ca3af;
 }
 
-.axis-y-label {
-  opacity: 0.9;
-}
-
+.axis-y-label,
 .axis-x-label {
   opacity: 0.9;
 }
 
-/* (chips stay as you already updated them) */
+/* Chips (keep your earlier colors; just reminder)
+
+.chip { ... }
+.chip-high { ... }
+.chip-medium { ... }
+.chip-low { ... }
+.chip-safety { ... }
+*/
+
+@media (max-width: 900px) {
+  .report-hero {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-two-column {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .report-column-chart {
+    margin-top: 8px;
+  }
+}
 
 @media (max-width: 640px) {
   .report-header-row {
